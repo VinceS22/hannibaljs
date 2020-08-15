@@ -12,22 +12,18 @@ client.once("ready", () => {
     client.on("message", (message) => {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings.baseUrl + ",goto,112").then((data) => {
+            getWebPage(settings.baseUrl + ",goto,28").then((data) => {
                 const webPage = cheerio.load(data);
                 webPage("article.forum-post").map((index: number, element: CheerioElement) => {
-                    const userName = webPage("h3", element).data("displayname");
+                    const userName = webPage("h3", element).data("displayname").replace("%A0", " ");
                     const postContent = webPage(".forum-post__body", element).eq(0).contents();
                     let resultString = "";
-                    let newlineCount = 0;
+
                     postContent.each((i, elem) => {
-                        if (elem.type === "text") {
+                        if (elem.type === "text" && elem.data) {
                             resultString += elem.data;
                         } else if (elem.type === "tag" && elem.name === "br") {
-                            if (newlineCount < 1) {
-                                resultString += "\n";
-                                newlineCount = 0;
-                            }
-                            newlineCount++;
+                            resultString += "\n";
                         }
                         else{
                             console.log(elem.data);
@@ -38,14 +34,14 @@ client.once("ready", () => {
                     console.log("Username: " + userName);
                     console.log("Post content: " + resultString);
                     results += userName + " \n " + resultString + "\n";
-                    console.log(results);
-                    if(results.length > 1000){
+                    if(results.length > 1800){
                         message.channel.send(results);
                         results = "";
                     }
                 });
 
                 message.channel.send(results);
+                results ="";
             });
         }
     });

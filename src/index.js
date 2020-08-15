@@ -68,23 +68,18 @@ client.once("ready", function () {
     client.on("message", function (message) {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings_json_1.default.baseUrl + ",goto,112").then(function (data) {
+            getWebPage(settings_json_1.default.baseUrl + ",goto,28").then(function (data) {
                 var webPage = cheerio_1.default.load(data);
                 webPage("article.forum-post").map(function (index, element) {
-                    var userName = webPage("h3", element).data("displayname");
+                    var userName = webPage("h3", element).data("displayname").replace("%A0", " ");
                     var postContent = webPage(".forum-post__body", element).eq(0).contents();
                     var resultString = "";
-                    var newlineCount = 0;
                     postContent.each(function (i, elem) {
-                        if (elem.type === "text") {
+                        if (elem.type === "text" && elem.data) {
                             resultString += elem.data;
                         }
                         else if (elem.type === "tag" && elem.name === "br") {
-                            if (newlineCount < 1) {
-                                resultString += "\n";
-                                newlineCount = 0;
-                            }
-                            newlineCount++;
+                            resultString += "\n";
                         }
                         else {
                             console.log(elem.data);
@@ -93,13 +88,13 @@ client.once("ready", function () {
                     console.log("Username: " + userName);
                     console.log("Post content: " + resultString);
                     results += userName + " \n " + resultString + "\n";
-                    console.log(results);
-                    if (results.length > 1000) {
+                    if (results.length > 1800) {
                         message.channel.send(results);
                         results = "";
                     }
                 });
                 message.channel.send(results);
+                results = "";
             });
         }
     });
