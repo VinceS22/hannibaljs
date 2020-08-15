@@ -54,42 +54,60 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var Discord = __importStar(require("discord.js"));
-var https = require("https");
+var cheerio_1 = __importDefault(require("cheerio"));
+var https_1 = __importDefault(require("https"));
+var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
-var settings = require("./settings.json");
-var domParser = new DOMParser();
 client.once("ready", function () {
     client.on("message", function (message) {
-        console.log(message.content);
-        if (message.content === "!help") {
+        if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings.baseUrl + ",goto,112").then(function (data) {
-                console.log(data);
-                var doc = domParser.parseFromString(data, "text/html");
+            getWebPage(settings_json_1.default.baseUrl + ",goto,112").then(function (data) {
+                var webPage = cheerio_1.default.load(data);
+                webPage("article.forum-post").map(function (index, element) {
+                    var userName = webPage("h3", element).data("displayname");
+                    var postContent = webPage(".forum-post__body", element).eq(0).contents();
+                    var resultString = "";
+                    postContent.each(function (i, elem) {
+                        if (elem.type === "text") {
+                            resultString += elem.data;
+                        }
+                        else if (elem.type === "tag" && elem.name === "br") {
+                            resultString += "/n";
+                        }
+                    });
+                    console.log("Username: " + userName);
+                    console.log("Post content: " + resultString);
+                });
             });
         }
     });
 });
-client.login(settings.token);
+client.login(settings_json_1.default.token);
 //  Get method implementation:
 function getWebPage(url, data) {
     if (url === void 0) { url = ""; }
     if (data === void 0) { data = {}; }
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
-            return [2 /*return*/, https.get(url, function (response) {
-                    var responseData = "";
-                    response.on("data", function (chunk) {
-                        responseData += chunk;
+            return [2 /*return*/, new Promise(function (resolve, reject) {
+                    https_1.default.get(url, function (response) {
+                        var responseData = "";
+                        response.on("data", function (chunk) {
+                            responseData += chunk;
+                        });
+                        response.on("end", function () {
+                            resolve(responseData);
+                        });
+                    }).on("error", function (err) {
+                        console.log("Error: " + err.message);
+                        reject(err.message);
                     });
-                    response.on("end", function () {
-                        return responseData;
-                    });
-                }).on("error", function (err) {
-                    console.log("Error: " + err.message);
-                    return err.message;
                 })];
         });
     });
