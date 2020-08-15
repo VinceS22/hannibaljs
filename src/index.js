@@ -68,7 +68,7 @@ client.once("ready", function () {
     client.on("message", function (message) {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings_json_1.default.baseUrl + ",goto,28").then(function (data) {
+            getWebPage(settings_json_1.default.baseUrl + ",goto,100").then(function (data) {
                 var webPage = cheerio_1.default.load(data);
                 webPage("article.forum-post").map(function (index, element) {
                     var userName = webPage("h3", element).data("displayname").replace("%A0", " ");
@@ -87,13 +87,15 @@ client.once("ready", function () {
                     });
                     console.log("Username: " + userName);
                     console.log("Post content: " + resultString);
-                    results += userName + " \n " + resultString + "\n";
-                    if (results.length > 1800) {
+                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" + resultString + "\n\n";
+                    if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
                     }
                 });
-                message.channel.send(results);
+                if (results.length > 0) {
+                    message.channel.send(results);
+                }
                 results = "";
             });
         }
