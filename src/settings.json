@@ -1,4 +1,5 @@
 {
   "prefix": "!",
-  "token": "Your token goes here."
+  "token": "Your token goes here",
+  "baseUrl": ""
 }
