@@ -9,42 +9,18 @@ const client = new Discord.Client();
 
 client.once("ready", () => {
     let results = "";
-    let currentPage = 100;
+    const currentPage = 100;
     client.on("message", (message) => {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
             getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
-                const webPage = cheerio.load(data);
-                webPage("article.forum-post").map((index: number, element: CheerioElement) => {
-                    const userName = webPage("h3", element).data("displayname").replace("%A0", " ");
-                    const postContent = webPage(".forum-post__body", element).eq(0).contents();
-                    const quotedPost = postContent.children();
+                const $ = cheerio.load(data);
+                $("article.forum-post").map((index: number, element: CheerioElement) => {
+                    const userName = $("h3", element).data("displayname").replace("%A0", " ");
+                    const postContent = $(".forum-post__body", element).eq(0).contents();
                     let resultString = "";
-                    let isQuotedApplication = false;
-                    let applicantUsername = "";
                     postContent.each((i, elem) => {
-                        if (elem.type === "text" && elem.data) {
-                            if (isQuotedApplication) {
-                                if(elem.data.includes("Username")) {
-                                    const splitData = elem.data.split(" ");
-                                    if (splitData.length > 0) {
-                                        applicantUsername = splitData[1];
-                                    }
-                                }
-                            } else {
-                                resultString += elem.data;
-                            }
-                        } else if (elem.type === "tag" && elem.name === "br") {
-                            if (!isQuotedApplication) {
-                                resultString += "\n";
-                            }
-                        } else if (elem.type === "tag" && elem.name === "span") {
-                            isQuotedApplication = !isQuotedApplication;
-                        }
-                        else{
-                            console.log(elem.data);
-                        }
-
+                        resultString += renderElement(elem);
                     });
 
                     console.log("Username: " + userName);
@@ -61,7 +37,7 @@ client.once("ready", () => {
                     message.channel.send(results);
                 }
                 results = "";
-                //currentPage++;
+                // currentPage++;
             });
         }
     });
@@ -69,34 +45,23 @@ client.once("ready", () => {
 
 client.login(settings.token);
 
-interface IRenderedElement {
-    data: string;
-
-}
-
-const renderElement = (i: number, elem: CheerioElement) => {
+const renderElement = (elem: CheerioElement): string => {
     let resultString = "";
-    let isQuotedApplication = false;
-    let applicantUsername = "";
-    if (elem.type === "text" && elem.data) {
-        if (isQuotedApplication) {
-            if(elem.data.includes("Username")) {
-                const splitData = elem.data.split(" ");
-                if (splitData.length > 0) {
-                    applicantUsername = splitData[1];
-                }
-            }
-        } else {
-            resultString += elem.data;
-        }
-    } else if (elem.type === "tag" && elem.name === "br") {
-        if (!isQuotedApplication) {
-            resultString += "\n";
-        }
-    } else if (elem.type === "tag" && elem.name === "span") {
-        isQuotedApplication = !isQuotedApplication;
-    }
-    else{
+    if (elem.type === "text" && elem.data) { // Line with actual text in it
+        resultString += elem.data;
+    } else if (elem.type === "tag" && elem.name === "br") { // Standard linebreak
+        resultString += "\n";
+    } else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
+        let spanContents = "";
+        spanContents = elem.children.map((nestedElement) => {
+            return renderElement(nestedElement);
+        }).join("");
+        resultString += "-----START QUOTE-----\n" + spanContents + "\n-----END QUOTE-----";
+    } else if (elem.type === "tag" && elem.name === "div") { // A div with more elements in it
+        resultString += elem.children.map((nestedElement) => {
+            return renderElement(nestedElement);
+        }).join("");
+    } else {
         console.log(elem.data);
     }
     return resultString;
