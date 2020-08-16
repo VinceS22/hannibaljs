@@ -9,32 +9,25 @@ const client = new Discord.Client();
 
 client.once("ready", () => {
     let results = "";
+    const currentPage = 100;
     client.on("message", (message) => {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings.baseUrl + ",goto,100").then((data) => {
-                const webPage = cheerio.load(data);
-                webPage("article.forum-post").map((index: number, element: CheerioElement) => {
-                    const userName = webPage("h3", element).data("displayname").replace("%A0", " ");
-                    const postContent = webPage(".forum-post__body", element).eq(0).contents();
+            getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
+                const $ = cheerio.load(data);
+                $("article.forum-post").map((index: number, element: CheerioElement) => {
+                    const userName = $("h3", element).data("displayname").replace("%A0", " ");
+                    const postContent = $(".forum-post__body", element).eq(0).contents();
                     let resultString = "";
-
                     postContent.each((i, elem) => {
-                        if (elem.type === "text" && elem.data) {
-                            resultString += elem.data;
-                        } else if (elem.type === "tag" && elem.name === "br") {
-                            resultString += "\n";
-                        }
-                        else{
-                            console.log(elem.data);
-                        }
-
+                        resultString += renderElement(elem);
                     });
 
                     console.log("Username: " + userName);
                     console.log("Post content: " + resultString);
-                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" + resultString + "\n\n";
-                    if(results.length > 1000){
+                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" +
+                        resultString + "\n\n";
+                    if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
                     }
@@ -43,13 +36,37 @@ client.once("ready", () => {
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
-                results ="";
+                results = "";
+                // currentPage++;
             });
         }
     });
 });
 
 client.login(settings.token);
+
+const renderElement = (elem: CheerioElement): string => {
+    let resultString = "";
+    if (elem.type === "text" && elem.data) { // Line with actual text in it
+        resultString += elem.data;
+    } else if (elem.type === "tag" && elem.name === "br") { // Standard linebreak
+        resultString += "\n";
+    } else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
+        let spanContents = "";
+        spanContents = elem.children.map((nestedElement) => {
+            return renderElement(nestedElement);
+        }).join("");
+        resultString += "-----START QUOTE-----\n" + spanContents + "\n-----END QUOTE-----";
+    } else if (elem.type === "tag" && elem.name === "div") { // A div with more elements in it
+        resultString += elem.children.map((nestedElement) => {
+            return renderElement(nestedElement);
+        }).join("");
+    } else {
+        console.log(elem.data);
+    }
+    return resultString;
+
+};
 
 //  Get method implementation:
 async function getWebPage(url = "", data = {}): Promise<string>  {

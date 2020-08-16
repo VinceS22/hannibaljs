@@ -65,29 +65,23 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 client.once("ready", function () {
     var results = "";
+    var currentPage = 100;
     client.on("message", function (message) {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings_json_1.default.baseUrl + ",goto,100").then(function (data) {
-                var webPage = cheerio_1.default.load(data);
-                webPage("article.forum-post").map(function (index, element) {
-                    var userName = webPage("h3", element).data("displayname").replace("%A0", " ");
-                    var postContent = webPage(".forum-post__body", element).eq(0).contents();
+            getWebPage(settings_json_1.default.baseUrl + ",goto," + currentPage).then(function (data) {
+                var $ = cheerio_1.default.load(data);
+                $("article.forum-post").map(function (index, element) {
+                    var userName = $("h3", element).data("displayname").replace("%A0", " ");
+                    var postContent = $(".forum-post__body", element).eq(0).contents();
                     var resultString = "";
                     postContent.each(function (i, elem) {
-                        if (elem.type === "text" && elem.data) {
-                            resultString += elem.data;
-                        }
-                        else if (elem.type === "tag" && elem.name === "br") {
-                            resultString += "\n";
-                        }
-                        else {
-                            console.log(elem.data);
-                        }
+                        resultString += renderElement(elem);
                     });
                     console.log("Username: " + userName);
                     console.log("Post content: " + resultString);
-                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" + resultString + "\n\n";
+                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" +
+                        resultString + "\n\n";
                     if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
@@ -97,11 +91,37 @@ client.once("ready", function () {
                     message.channel.send(results);
                 }
                 results = "";
+                // currentPage++;
             });
         }
     });
 });
 client.login(settings_json_1.default.token);
+var renderElement = function (elem) {
+    var resultString = "";
+    if (elem.type === "text" && elem.data) { // Line with actual text in it
+        resultString += elem.data;
+    }
+    else if (elem.type === "tag" && elem.name === "br") { // Standard linebreak
+        resultString += "\n";
+    }
+    else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
+        var spanContents = "";
+        spanContents = elem.children.map(function (nestedElement) {
+            return renderElement(nestedElement);
+        }).join("");
+        resultString += "-----START QUOTE-----\n" + spanContents + "\n-----END QUOTE-----";
+    }
+    else if (elem.type === "tag" && elem.name === "div") { // A div with more elements in it
+        resultString += elem.children.map(function (nestedElement) {
+            return renderElement(nestedElement);
+        }).join("");
+    }
+    else {
+        console.log(elem.data);
+    }
+    return resultString;
+};
 //  Get method implementation:
 function getWebPage(url, data) {
     if (url === void 0) { url = ""; }
