@@ -9,21 +9,36 @@ const client = new Discord.Client();
 
 client.once("ready", () => {
     let results = "";
+    let currentPage = 100;
     client.on("message", (message) => {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings.baseUrl + ",goto,100").then((data) => {
+            getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
                 const webPage = cheerio.load(data);
                 webPage("article.forum-post").map((index: number, element: CheerioElement) => {
                     const userName = webPage("h3", element).data("displayname").replace("%A0", " ");
                     const postContent = webPage(".forum-post__body", element).eq(0).contents();
                     let resultString = "";
-
+                    let isQuotedApplication = false;
+                    let applicantUsername = "";
                     postContent.each((i, elem) => {
                         if (elem.type === "text" && elem.data) {
-                            resultString += elem.data;
+                            if (isQuotedApplication) {
+                                if(elem.data.includes("Username")) {
+                                    const splitData = elem.data.split(" ");
+                                    if (splitData.length > 0) {
+                                        applicantUsername = splitData[1];
+                                    }
+                                }
+                            } else {
+                                resultString += elem.data;
+                            }
                         } else if (elem.type === "tag" && elem.name === "br") {
-                            resultString += "\n";
+                            if (!isQuotedApplication) {
+                                resultString += "\n";
+                            }
+                        } else if (elem.type === "tag" && elem.name === "span") {
+                            isQuotedApplication = !isQuotedApplication;
                         }
                         else{
                             console.log(elem.data);
@@ -33,8 +48,9 @@ client.once("ready", () => {
 
                     console.log("Username: " + userName);
                     console.log("Post content: " + resultString);
-                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" + resultString + "\n\n";
-                    if(results.length > 1000){
+                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" +
+                        resultString + "\n\n";
+                    if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
                     }
@@ -43,13 +59,27 @@ client.once("ready", () => {
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
-                results ="";
+                results = "";
+                currentPage++;
             });
         }
     });
 });
 
 client.login(settings.token);
+
+// function processLine(element: CheerioElement)
+// {
+//     let resultString = "";
+//     if (elem.type === "text" && elem.data) {
+//         resultString += elem.data;
+//     } else if (elem.type === "tag" && elem.name === "br") {
+//         resultString += "\n";
+//     } else if (elem.type === "tag" && elem.name === "span") {
+//         quotedApplication += elem.data + "/n";
+//         isQuotedLine = true;
+//     }
+// }
 
 //  Get method implementation:
 async function getWebPage(url = "", data = {}): Promise<string>  {

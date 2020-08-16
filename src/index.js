@@ -65,21 +65,39 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 client.once("ready", function () {
     var results = "";
+    var currentPage = 100;
     client.on("message", function (message) {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings_json_1.default.baseUrl + ",goto,100").then(function (data) {
+            getWebPage(settings_json_1.default.baseUrl + ",goto," + currentPage).then(function (data) {
                 var webPage = cheerio_1.default.load(data);
                 webPage("article.forum-post").map(function (index, element) {
                     var userName = webPage("h3", element).data("displayname").replace("%A0", " ");
                     var postContent = webPage(".forum-post__body", element).eq(0).contents();
                     var resultString = "";
+                    var isQuotedApplication = false;
+                    var applicantUsername = "";
                     postContent.each(function (i, elem) {
                         if (elem.type === "text" && elem.data) {
-                            resultString += elem.data;
+                            if (isQuotedApplication) {
+                                if (elem.data.includes("Username")) {
+                                    var splitData = elem.data.split(" ");
+                                    if (splitData.length > 0) {
+                                        applicantUsername = splitData[1];
+                                    }
+                                }
+                            }
+                            else {
+                                resultString += elem.data;
+                            }
                         }
                         else if (elem.type === "tag" && elem.name === "br") {
-                            resultString += "\n";
+                            if (!isQuotedApplication) {
+                                resultString += "\n";
+                            }
+                        }
+                        else if (elem.type === "tag" && elem.name === "span") {
+                            isQuotedApplication = !isQuotedApplication;
                         }
                         else {
                             console.log(elem.data);
@@ -87,7 +105,8 @@ client.once("ready", function () {
                     });
                     console.log("Username: " + userName);
                     console.log("Post content: " + resultString);
-                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" + resultString + "\n\n";
+                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" +
+                        resultString + "\n\n";
                     if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
@@ -97,6 +116,7 @@ client.once("ready", function () {
                     message.channel.send(results);
                 }
                 results = "";
+                currentPage++;
             });
         }
     });
