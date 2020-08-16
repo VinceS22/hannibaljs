@@ -18,6 +18,7 @@ client.once("ready", () => {
                 webPage("article.forum-post").map((index: number, element: CheerioElement) => {
                     const userName = webPage("h3", element).data("displayname").replace("%A0", " ");
                     const postContent = webPage(".forum-post__body", element).eq(0).contents();
+                    const quotedPost = postContent.children();
                     let resultString = "";
                     let isQuotedApplication = false;
                     let applicantUsername = "";
@@ -60,7 +61,7 @@ client.once("ready", () => {
                     message.channel.send(results);
                 }
                 results = "";
-                currentPage++;
+                //currentPage++;
             });
         }
     });
@@ -68,18 +69,39 @@ client.once("ready", () => {
 
 client.login(settings.token);
 
-// function processLine(element: CheerioElement)
-// {
-//     let resultString = "";
-//     if (elem.type === "text" && elem.data) {
-//         resultString += elem.data;
-//     } else if (elem.type === "tag" && elem.name === "br") {
-//         resultString += "\n";
-//     } else if (elem.type === "tag" && elem.name === "span") {
-//         quotedApplication += elem.data + "/n";
-//         isQuotedLine = true;
-//     }
-// }
+interface IRenderedElement {
+    data: string;
+
+}
+
+const renderElement = (i: number, elem: CheerioElement) => {
+    let resultString = "";
+    let isQuotedApplication = false;
+    let applicantUsername = "";
+    if (elem.type === "text" && elem.data) {
+        if (isQuotedApplication) {
+            if(elem.data.includes("Username")) {
+                const splitData = elem.data.split(" ");
+                if (splitData.length > 0) {
+                    applicantUsername = splitData[1];
+                }
+            }
+        } else {
+            resultString += elem.data;
+        }
+    } else if (elem.type === "tag" && elem.name === "br") {
+        if (!isQuotedApplication) {
+            resultString += "\n";
+        }
+    } else if (elem.type === "tag" && elem.name === "span") {
+        isQuotedApplication = !isQuotedApplication;
+    }
+    else{
+        console.log(elem.data);
+    }
+    return resultString;
+
+};
 
 //  Get method implementation:
 async function getWebPage(url = "", data = {}): Promise<string>  {

@@ -74,6 +74,7 @@ client.once("ready", function () {
                 webPage("article.forum-post").map(function (index, element) {
                     var userName = webPage("h3", element).data("displayname").replace("%A0", " ");
                     var postContent = webPage(".forum-post__body", element).eq(0).contents();
+                    var quotedPost = postContent.children();
                     var resultString = "";
                     var isQuotedApplication = false;
                     var applicantUsername = "";
@@ -116,12 +117,42 @@ client.once("ready", function () {
                     message.channel.send(results);
                 }
                 results = "";
-                currentPage++;
+                //currentPage++;
             });
         }
     });
 });
 client.login(settings_json_1.default.token);
+var renderElement = function (i, elem) {
+    var resultString = "";
+    var isQuotedApplication = false;
+    var applicantUsername = "";
+    if (elem.type === "text" && elem.data) {
+        if (isQuotedApplication) {
+            if (elem.data.includes("Username")) {
+                var splitData = elem.data.split(" ");
+                if (splitData.length > 0) {
+                    applicantUsername = splitData[1];
+                }
+            }
+        }
+        else {
+            resultString += elem.data;
+        }
+    }
+    else if (elem.type === "tag" && elem.name === "br") {
+        if (!isQuotedApplication) {
+            resultString += "\n";
+        }
+    }
+    else if (elem.type === "tag" && elem.name === "span") {
+        isQuotedApplication = !isQuotedApplication;
+    }
+    else {
+        console.log(elem.data);
+    }
+    return resultString;
+};
 //  Get method implementation:
 function getWebPage(url, data) {
     if (url === void 0) { url = ""; }
