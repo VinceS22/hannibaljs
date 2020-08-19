@@ -31,7 +31,6 @@ client.once("ready", () => {
             results += "Checking page " + currentPage + " and " + lastPage + "...\n";
             for (currentPage; currentPage <= lastPage; currentPage++) {
                 getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
-                    console.log('Web call');
                     $ = cheerio.load(data);
                     lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
                     $("article.forum-post").map((index: number, element: CheerioElement) => {
@@ -204,9 +203,7 @@ const renderElement = (elem: CheerioElement): IPostResults => {
                 purpose = element.purpose;
             }
         });
-
-
-    } else {
+    } else if (elem.data) {
         console.log(elem.data);
     }
     return {appUsername, purpose, postText };
