@@ -101,16 +101,19 @@ client.once("ready", () => {
                 if (priorApplicants[key] !== applicants[key]) {
                     results += key + " has applied";
                     if (value) {
-                        results += " and has been processed \n";
+                        results += " and has been reviewed \n";
                     } else {
                         results += " and needs to have their app looked at here: " + settings.baseUrl +
                           ",goto," + currentPage + "\n";
                         results += " Here\'s your command: !rw " + key + "\n";
                     }
                     hasNewPost = true;
+                } else if (applicants[key]) {
+                    results += applicants[key] + " still needs to be reviewed\n";
+                    hasNewPost = true;
                 }
             }
-            if(hasNewPost || debug) {
+            if (hasNewPost || debug) {
                 message.channel.send(results);
             } else {
                 message.channel.send("Nothing new!");
