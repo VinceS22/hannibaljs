@@ -65,97 +65,117 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 client.once("ready", function () {
     var results = "";
-    var currentPage = 3;
-    client.on("message", function (message) {
-        if (message.content === "a") {
-            message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings_json_1.default.baseUrl + ",goto," + currentPage).then(function (data) {
-                var bumpers = {};
-                var applicants = {}; // True if the user has a corresponding accept/reject
-                var $ = cheerio_1.default.load(data);
-                $("article.forum-post").map(function (index, element) {
-                    var userName = $("h3", element).data("displayname").replace("%A0", " ");
-                    var postContent = $(".forum-post__body", element).eq(0).contents();
-                    var resultString = "";
-                    var appUsername = "";
-                    var purpose = postPurpose.Bump;
-                    postContent.each(function (i, elem) {
-                        var renderedElement = renderElement(elem);
-                        resultString += renderedElement.postText;
-                        if (renderedElement.purpose !== postPurpose.Bump) {
-                            purpose = renderedElement.purpose;
-                        }
-                        if (renderedElement.appUsername) {
-                            appUsername = renderedElement.appUsername;
-                        }
-                    });
-                    // @ts-ignore
-                    if (purpose === postPurpose.Acceptance) {
-                        results += userName + " has accepted " + appUsername + "\n";
+    var currentPage = -1;
+    var lastPage = -1;
+    var debug = false;
+    var bumpers = {};
+    var applicants = {};
+    var promises = [];
+    client.on("message", function (message) { return __awaiter(void 0, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            if (message.content === "a") {
+                message.channel.send("This is the help. Im helping! :)");
+                // True if the user has a corresponding accept/reject
+                promises.push(getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
+                    var _a;
+                    var $ = cheerio_1.default.load(pageNumData);
+                    lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
+                    currentPage = lastPage - 1;
+                    results += "Sharing page " + currentPage + " and " + lastPage + "\n";
+                    for (currentPage; currentPage <= lastPage; currentPage++) {
+                        getWebPage(settings_json_1.default.baseUrl + ",goto," + currentPage).then(function (data) {
+                            var _a;
+                            console.log('Web call');
+                            $ = cheerio_1.default.load(data);
+                            lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
+                            $("article.forum-post").map(function (index, element) {
+                                var userName = $("h3", element).data("displayname").replace("%A0", " ");
+                                var postContent = $(".forum-post__body", element).eq(0).contents();
+                                var resultString = "";
+                                var appUsername = "";
+                                var purpose = postPurpose.Bump;
+                                postContent.each(function (i, elem) {
+                                    var renderedElement = renderElement(elem);
+                                    resultString += renderedElement.postText;
+                                    if (renderedElement.purpose !== postPurpose.Bump) {
+                                        purpose = renderedElement.purpose;
+                                    }
+                                    if (renderedElement.appUsername) {
+                                        appUsername = renderedElement.appUsername;
+                                    }
+                                });
+                                // @ts-ignore
+                                if (purpose === postPurpose.Acceptance) {
+                                    results += userName + " has accepted " + appUsername + "\n";
+                                    applicants[appUsername] = true;
+                                }
+                                else { // @ts-ignore
+                                    if (purpose === postPurpose.Rejection) {
+                                        results += userName + " has rejected " + appUsername + "\n";
+                                        applicants[appUsername] = true;
+                                    }
+                                    else if (appUsername.length > 0) {
+                                        purpose = postPurpose.Application;
+                                    }
+                                }
+                                if (debug) {
+                                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
+                                        purpose + "\n";
+                                }
+                                switch (purpose) {
+                                    case postPurpose.Bump:
+                                        if (bumpers[userName]) {
+                                            bumpers[userName]++;
+                                        }
+                                        else {
+                                            bumpers[userName] = 1;
+                                        }
+                                        break;
+                                    // @ts-ignore
+                                    case postPurpose.Acceptance: // @ts-ignore
+                                        applicants[appUsername] = true;
+                                        break;
+                                    // @ts-ignore
+                                    case postPurpose.Rejection: // @ts-ignore
+                                        applicants[appUsername] = true;
+                                        break;
+                                    case postPurpose.Application:
+                                        if (!applicants[appUsername]) {
+                                            applicants[appUsername] = false;
+                                        }
+                                        break;
+                                }
+                            });
+                        });
                     }
-                    else { // @ts-ignore
-                        if (purpose === postPurpose.Rejection) {
-                            results += userName + " has rejected " + appUsername + "\n";
+                }));
+                // This is using a timeout. It's gross and I hate it.
+                // TODO: Figure out how to incorporate promises correctly for this.
+                setTimeout(function () {
+                    for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
+                        var _b = _a[_i], key = _b[0], value = _b[1];
+                        results += key + " has bumped the thread " + value + " times\n";
+                    }
+                    for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
+                        var _e = _d[_c], key = _e[0], value = _e[1];
+                        results += key + " has applied";
+                        if (value) {
+                            results += " and has been processed \n";
                         }
-                        else if (appUsername.length > 0) {
-                            purpose = postPurpose.Application;
-                            results += appUsername + " Has applied\n ";
+                        else {
+                            results += " and needs to have their app looked at here: " + settings_json_1.default.baseUrl +
+                                ",goto," + currentPage + "\n";
+                            results += " Here\'s your command: !rw " + key + "\n";
                         }
                     }
-                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n";
-                    switch (purpose) {
-                        case postPurpose.Bump:
-                            if (bumpers[userName]) {
-                                bumpers[userName]++;
-                            }
-                            else {
-                                bumpers[userName] = 1;
-                            }
-                            break;
-                        // @ts-ignore
-                        case postPurpose.Acceptance: // @ts-ignore
-                            applicants[appUsername] = true;
-                            break;
-                        // @ts-ignore
-                        case postPurpose.Rejection: // @ts-ignore
-                            applicants[appUsername] = true;
-                            break;
-                        case postPurpose.Application:
-                            applicants[appUsername] = false;
-                            break;
-                    }
-                    console.log("Username: " + userName);
-                    console.log("Post Purpose: " + purpose.toString());
-                    console.log("Post content: " + resultString);
-                    if (results.length > 1000) {
+                    if (results.length > 0) {
                         message.channel.send(results);
-                        results = "";
                     }
-                    results += "-------------------------------" + "\n";
-                });
-                for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
-                    var _b = _a[_i], key = _b[0], value = _b[1];
-                    results += key + " has bumped the thread " + value + " times\n";
-                }
-                for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
-                    var _e = _d[_c], key = _e[0], value = _e[1];
-                    results += key + " has applied";
-                    if (value) {
-                        results += " and has been processed \n";
-                    }
-                    else {
-                        results += " and needs to have their app looked at here: " + settings_json_1.default.baseUrl + ",goto," +
-                            currentPage + "\n";
-                    }
-                }
-                if (results.length > 0) {
-                    message.channel.send(results);
-                }
-                results = "";
-                currentPage++;
-            });
-        }
-    });
+                }, 10000);
+            }
+            return [2 /*return*/];
+        });
+    }); });
 });
 client.login(settings_json_1.default.token);
 var postPurpose;

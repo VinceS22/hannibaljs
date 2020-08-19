@@ -9,93 +9,107 @@ const client = new Discord.Client();
 
 client.once("ready", () => {
     let results = "";
-    let currentPage = 3;
-    client.on("message", (message) => {
+    let currentPage = -1;
+    let lastPage = -1;
+    const debug = false;
+    const bumpers: {[poster: string]: number} = {};
+    const applicants: {[poster: string]: boolean} = {};
+    const promises: any[] = [];
+    client.on("message", async (message) => {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
-            getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
-                const bumpers: {[poster: string]: number} = {};
-                const applicants: {[poster: string]: boolean} = {}; // True if the user has a corresponding accept/reject
-                const $ = cheerio.load(data);
-                $("article.forum-post").map((index: number, element: CheerioElement) => {
-                    const userName = $("h3", element).data("displayname").replace("%A0", " ");
-                    const postContent = $(".forum-post__body", element).eq(0).contents();
-                    let resultString = "";
-                    let appUsername = "";
-                    let purpose = postPurpose.Bump;
-                    postContent.each((i, elem) => {
-                        const renderedElement = renderElement(elem);
-                        resultString += renderedElement.postText;
-                        if (renderedElement.purpose !== postPurpose.Bump) {
-                            purpose = renderedElement.purpose;
-                        }
-                        if(renderedElement.appUsername) {
-                            appUsername = renderedElement.appUsername;
-                        }
-                    });
+            // True if the user has a corresponding accept/reject
+            promises.push(getWebPage(settings.baseUrl).then((pageNumData) => {
+                let $ = cheerio.load(pageNumData);
+                lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+                currentPage = lastPage - 1;
+                results += "Sharing page " + currentPage + " and " + lastPage + "\n";
+                for (currentPage; currentPage <= lastPage; currentPage++) {
+                    getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
+                        console.log('Web call');
+                        $ = cheerio.load(data);
+                        lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+                        $("article.forum-post").map((index: number, element: CheerioElement) => {
+                            const userName = $("h3", element).data("displayname").replace("%A0", " ");
+                            const postContent = $(".forum-post__body", element).eq(0).contents();
+                            let resultString = "";
+                            let appUsername = "";
+                            let purpose = postPurpose.Bump;
+                            postContent.each((i, elem) => {
+                                const renderedElement = renderElement(elem);
+                                resultString += renderedElement.postText;
+                                if (renderedElement.purpose !== postPurpose.Bump) {
+                                    purpose = renderedElement.purpose;
+                                }
+                                if(renderedElement.appUsername) {
+                                    appUsername = renderedElement.appUsername;
+                                }
+                            });
 
-                    // @ts-ignore
-                    if (purpose === postPurpose.Acceptance) {
-                        results += userName + " has accepted " + appUsername + "\n";
-                    } else { // @ts-ignore
-                        if (purpose === postPurpose.Rejection) {
-                            results += userName + " has rejected " + appUsername + "\n";
-                        } else if (appUsername.length > 0) {
-                            purpose = postPurpose.Application;
-                            results += appUsername + " Has applied\n ";
-                        }
-                    }
-                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n" ;
-                    switch(purpose) {
-                        case postPurpose.Bump:
-                            if (bumpers[userName]) {
-                                bumpers[userName]++;
-                            } else {
-                                bumpers[userName] = 1;
+                            // @ts-ignore
+                            if (purpose === postPurpose.Acceptance) {
+                                results += userName + " has accepted " + appUsername + "\n";
+                                applicants[appUsername] = true;
+                            } else { // @ts-ignore
+                                if (purpose === postPurpose.Rejection) {
+                                    results += userName + " has rejected " + appUsername + "\n";
+                                    applicants[appUsername] = true;
+                                } else if (appUsername.length > 0) {
+                                    purpose = postPurpose.Application;
+                                }
                             }
-                            break;
-                        // @ts-ignore
-                        case postPurpose.Acceptance: // @ts-ignore
-                            applicants[appUsername] = true;
-                            break;
-                      // @ts-ignore
-                        case postPurpose.Rejection: // @ts-ignore
-                            applicants[appUsername] = true;
-                            break;
-                        case postPurpose.Application:
-                            applicants[appUsername] = false;
-                            break;
-                    }
-                    console.log("Username: " + userName);
-                    console.log("Post Purpose: " + purpose.toString());
-                    console.log("Post content: " + resultString);
+                            if (debug) {
+                                results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
+                                  purpose + "\n" ;
+                            }
+                            switch (purpose) {
+                                case postPurpose.Bump:
+                                    if (bumpers[userName]) {
+                                        bumpers[userName]++;
+                                    } else {
+                                        bumpers[userName] = 1;
+                                    }
+                                    break;
+                              // @ts-ignore
+                                case postPurpose.Acceptance: // @ts-ignore
+                                    applicants[appUsername] = true;
+                                    break;
+                              // @ts-ignore
+                                case postPurpose.Rejection: // @ts-ignore
+                                    applicants[appUsername] = true;
+                                    break;
+                                case postPurpose.Application:
+                                    if (!applicants[appUsername]) {
+                                        applicants[appUsername] = false;
+                                    }
+                                    break;
+                            }
+                        });
 
-
-                    if (results.length > 1000) {
-                        message.channel.send(results);
-                        results = "";
-                    }
-                    results += "-------------------------------" + "\n";
-                });
-
+                    });
+                }
+            }));
+            // This is using a timeout. It's gross and I hate it.
+            // TODO: Figure out how to incorporate promises correctly for this.
+            setTimeout(() => {
                 for (const [key, value] of Object.entries(bumpers)) {
                     results += key + " has bumped the thread " + value + " times\n";
                 }
                 for (const [key, value] of Object.entries(applicants)) {
                     results += key + " has applied";
-                    if(value) {
-                       results += " and has been processed \n";
+                    if (value) {
+                        results += " and has been processed \n";
                     } else {
-                        results += " and needs to have their app looked at here: " + settings.baseUrl + ",goto," +
-                          currentPage + "\n";
+                        results += " and needs to have their app looked at here: " + settings.baseUrl +
+                          ",goto," + currentPage + "\n";
+                        results += " Here\'s your command: !rw " + key + "\n";
                     }
                 }
+
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
-                results = "";
-                currentPage++;
-            });
+            }, 10000);
         }
     });
 });
