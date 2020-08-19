@@ -65,7 +65,7 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 client.once("ready", function () {
     var results = "";
-    var currentPage = 100;
+    var currentPage = 110;
     client.on("message", function (message) {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
@@ -75,54 +75,105 @@ client.once("ready", function () {
                     var userName = $("h3", element).data("displayname").replace("%A0", " ");
                     var postContent = $(".forum-post__body", element).eq(0).contents();
                     var resultString = "";
+                    var appUsername = "";
+                    var purpose = postPurpose.Bump;
                     postContent.each(function (i, elem) {
-                        resultString += renderElement(elem);
+                        var renderedElement = renderElement(elem);
+                        resultString += renderedElement.postText;
+                        if (renderedElement.purpose !== postPurpose.Bump) {
+                            purpose = renderedElement.purpose;
+                        }
+                        if (renderedElement.appUsername) {
+                            appUsername = renderedElement.appUsername;
+                        }
                     });
+                    // @ts-ignore
+                    if (purpose === postPurpose.Acceptance) {
+                        results += userName + " has accepted " + appUsername + "\n";
+                    }
+                    else { // @ts-ignore
+                        if (purpose === postPurpose.Rejection) {
+                            results += userName + " has rejected " + appUsername + "\n";
+                        }
+                        else if (appUsername.length > 0) {
+                            purpose = postPurpose.Application;
+                        }
+                    }
                     console.log("Username: " + userName);
+                    console.log("Post Purpose: " + purpose.toString());
                     console.log("Post content: " + resultString);
-                    results += "Current Username: " + userName + " \n " + "-------------------------------" + "\n" +
-                        resultString + "\n\n";
+                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n";
                     if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
                     }
+                    results += "-------------------------------" + "\n";
                 });
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
                 results = "";
-                // currentPage++;
+                currentPage++;
             });
         }
     });
 });
 client.login(settings_json_1.default.token);
+var postPurpose;
+(function (postPurpose) {
+    postPurpose["Bump"] = "Bump";
+    postPurpose["Application"] = "Application";
+    postPurpose["Acceptance"] = "Acceptance";
+    postPurpose["Rejection"] = "Rejection";
+})(postPurpose || (postPurpose = {}));
+// Takes a line in a post, determines what it is, then sends a string back depending on what it is.
 var renderElement = function (elem) {
-    var resultString = "";
+    var postText = "";
+    var purpose = postPurpose.Bump;
+    var appUsername = "";
     if (elem.type === "text" && elem.data) { // Line with actual text in it
-        resultString += elem.data;
+        postText += elem.data;
+        if (elem.data.includes("Username:")) {
+            appUsername = elem.data.split(":")[1].trim();
+            purpose = postPurpose.Application;
+        }
+        else if (elem.data.includes(settings_json_1.default.acceptanceString)) {
+            purpose = postPurpose.Acceptance;
+        }
+        else if (elem.data.includes(settings_json_1.default.rejectionString)) {
+            purpose = postPurpose.Rejection;
+        }
     }
     else if (elem.type === "tag" && elem.name === "br") { // Standard linebreak
-        resultString += "\n";
+        postText += "\n";
     }
     else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
         var spanContents = "";
         spanContents = elem.children.map(function (nestedElement) {
-            return renderElement(nestedElement);
+            var elementContent = renderElement(nestedElement);
+            // Yank the username from the quoted text and set it if we have it.
+            if (elementContent.appUsername) {
+                appUsername = elementContent.appUsername;
+            }
+            return elementContent.postText;
         }).join("");
-        resultString += "-----START QUOTE-----\n" + spanContents + "\n-----END QUOTE-----";
+        postText += "-----START QUOTE-----\n" + spanContents + "\n-----END QUOTE-----";
     }
     else if (elem.type === "tag" && elem.name === "div") { // A div with more elements in it
-        resultString += elem.children.map(function (nestedElement) {
-            return renderElement(nestedElement);
-        }).join("");
+        elem.children.forEach(function (nestedElement) {
+            var element = renderElement(nestedElement);
+            postText += element.postText;
+            if (element.purpose === postPurpose.Acceptance || element.purpose === postPurpose.Rejection) {
+                purpose = element.purpose;
+            }
+        });
     }
     else {
         console.log(elem.data);
     }
-    return resultString;
+    return { appUsername: appUsername, purpose: purpose, postText: postText };
 };
-//  Get method implementation:
+//  HTTP Get method implementation:
 function getWebPage(url, data) {
     if (url === void 0) { url = ""; }
     if (data === void 0) { data = {}; }
