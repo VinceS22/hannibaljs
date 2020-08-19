@@ -65,7 +65,7 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 client.once("ready", function () {
     var results = "";
-    var currentPage = 100;
+    var currentPage = 110;
     client.on("message", function (message) {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
@@ -81,38 +81,39 @@ client.once("ready", function () {
                         var renderedElement = renderElement(elem);
                         resultString += renderedElement.postText;
                         if (renderedElement.purpose !== postPurpose.Bump) {
-                            purpose = postPurpose.Acceptance;
                             purpose = renderedElement.purpose;
                         }
                         if (renderedElement.appUsername) {
                             appUsername = renderedElement.appUsername;
                         }
                     });
-                    console.log("Username: " + userName);
-                    console.log("Post Purpose: " + purpose.toString());
-                    console.log("Post content: " + resultString);
-                    results += "Post purpose: " + purpose + "\n Current Poster's Username: " +
-                        userName + " \n " + "-------------------------------" + "\n";
                     // @ts-ignore
                     if (purpose === postPurpose.Acceptance) {
                         results += userName + " has accepted " + appUsername + "\n";
                     }
-                    else {
-                        // @ts-ignore
+                    else { // @ts-ignore
                         if (purpose === postPurpose.Rejection) {
                             results += userName + " has rejected " + appUsername + "\n";
                         }
+                        else if (appUsername.length > 0) {
+                            purpose = postPurpose.Application;
+                        }
                     }
+                    console.log("Username: " + userName);
+                    console.log("Post Purpose: " + purpose.toString());
+                    console.log("Post content: " + resultString);
+                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n";
                     if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
                     }
+                    results += "-------------------------------" + "\n";
                 });
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
                 results = "";
-                // currentPage++;
+                currentPage++;
             });
         }
     });
@@ -132,8 +133,9 @@ var renderElement = function (elem) {
     var appUsername = "";
     if (elem.type === "text" && elem.data) { // Line with actual text in it
         postText += elem.data;
-        if (elem.data.includes("Username: ")) {
-            appUsername = elem.data.split(" ")[1];
+        if (elem.data.includes("Username:")) {
+            appUsername = elem.data.split(":")[1].trim();
+            purpose = postPurpose.Application;
         }
         else if (elem.data.includes(settings_json_1.default.acceptanceString)) {
             purpose = postPurpose.Acceptance;
