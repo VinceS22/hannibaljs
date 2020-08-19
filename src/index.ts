@@ -12,11 +12,11 @@ client.once("ready", () => {
     let currentPage = -1;
     let lastPage = -1;
     const debug = false;
-    const bumpers: {[poster: string]: number} = {};
-    const applicants: {[poster: string]: boolean} = {};
+    let bumpers: {[poster: string]: number} = {};
+    let applicants: {[poster: string]: boolean} = {};
     const promises: any[] = [];
     client.on("message", async (message) => {
-        if (message.content === "a") {
+        if (message.content === "!forum") {
             message.channel.send("This is the help. Im helping! :)");
             // True if the user has a corresponding accept/reject
             promises.push(getWebPage(settings.baseUrl).then((pageNumData) => {
@@ -109,6 +109,9 @@ client.once("ready", () => {
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
+                bumpers = {};
+                applicants = {};
+                results = "";
             }, 10000);
         }
     });

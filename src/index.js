@@ -73,7 +73,7 @@ client.once("ready", function () {
     var promises = [];
     client.on("message", function (message) { return __awaiter(void 0, void 0, void 0, function () {
         return __generator(this, function (_a) {
-            if (message.content === "a") {
+            if (message.content === "!forum") {
                 message.channel.send("This is the help. Im helping! :)");
                 // True if the user has a corresponding accept/reject
                 promises.push(getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
@@ -171,6 +171,9 @@ client.once("ready", function () {
                     if (results.length > 0) {
                         message.channel.send(results);
                     }
+                    bumpers = {};
+                    applicants = {};
+                    results = "";
                 }, 10000);
             }
             return [2 /*return*/];
