@@ -9,13 +9,14 @@ const client = new Discord.Client();
 
 client.once("ready", () => {
     let results = "";
-    let currentPage = 110;
+    let currentPage = 3;
     client.on("message", (message) => {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
             getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
+                const bumpers: {[poster: string]: number} = {};
+                const applicants: {[poster: string]: boolean} = {}; // True if the user has a corresponding accept/reject
                 const $ = cheerio.load(data);
-
                 $("article.forum-post").map((index: number, element: CheerioElement) => {
                     const userName = $("h3", element).data("displayname").replace("%A0", " ");
                     const postContent = $(".forum-post__body", element).eq(0).contents();
@@ -39,24 +40,56 @@ client.once("ready", () => {
                     } else { // @ts-ignore
                         if (purpose === postPurpose.Rejection) {
                             results += userName + " has rejected " + appUsername + "\n";
-                        } else if(appUsername.length > 0) {
+                        } else if (appUsername.length > 0) {
                             purpose = postPurpose.Application;
+                            results += appUsername + " Has applied\n ";
                         }
                     }
-
+                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n" ;
+                    switch(purpose) {
+                        case postPurpose.Bump:
+                            if (bumpers[userName]) {
+                                bumpers[userName]++;
+                            } else {
+                                bumpers[userName] = 1;
+                            }
+                            break;
+                        // @ts-ignore
+                        case postPurpose.Acceptance: // @ts-ignore
+                            applicants[appUsername] = true;
+                            break;
+                      // @ts-ignore
+                        case postPurpose.Rejection: // @ts-ignore
+                            applicants[appUsername] = true;
+                            break;
+                        case postPurpose.Application:
+                            applicants[appUsername] = false;
+                            break;
+                    }
                     console.log("Username: " + userName);
                     console.log("Post Purpose: " + purpose.toString());
                     console.log("Post content: " + resultString);
-                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n" ;
+
 
                     if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
                     }
-
                     results += "-------------------------------" + "\n";
                 });
 
+                for (const [key, value] of Object.entries(bumpers)) {
+                    results += key + " has bumped the thread " + value + " times\n";
+                }
+                for (const [key, value] of Object.entries(applicants)) {
+                    results += key + " has applied";
+                    if(value) {
+                       results += " and has been processed \n";
+                    } else {
+                        results += " and needs to have their app looked at here: " + settings.baseUrl + ",goto," +
+                          currentPage + "\n";
+                    }
+                }
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
@@ -90,7 +123,9 @@ const renderElement = (elem: CheerioElement): IPostResults => {
 
         if (elem.data.includes("Username:")) {
             appUsername = elem.data.split(":")[1].trim();
-            purpose = postPurpose.Application;
+            if (appUsername.length > 0) {
+                purpose = postPurpose.Application;
+            }
         } else if(elem.data.includes(settings.acceptanceString)) {
             purpose = postPurpose.Acceptance;
         } else if(elem.data.includes(settings.rejectionString)) {

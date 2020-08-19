@@ -65,11 +65,13 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 client.once("ready", function () {
     var results = "";
-    var currentPage = 110;
+    var currentPage = 3;
     client.on("message", function (message) {
         if (message.content === "a") {
             message.channel.send("This is the help. Im helping! :)");
             getWebPage(settings_json_1.default.baseUrl + ",goto," + currentPage).then(function (data) {
+                var bumpers = {};
+                var applicants = {}; // True if the user has a corresponding accept/reject
                 var $ = cheerio_1.default.load(data);
                 $("article.forum-post").map(function (index, element) {
                     var userName = $("h3", element).data("displayname").replace("%A0", " ");
@@ -97,18 +99,55 @@ client.once("ready", function () {
                         }
                         else if (appUsername.length > 0) {
                             purpose = postPurpose.Application;
+                            results += appUsername + " Has applied\n ";
                         }
+                    }
+                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n";
+                    switch (purpose) {
+                        case postPurpose.Bump:
+                            if (bumpers[userName]) {
+                                bumpers[userName]++;
+                            }
+                            else {
+                                bumpers[userName] = 1;
+                            }
+                            break;
+                        // @ts-ignore
+                        case postPurpose.Acceptance: // @ts-ignore
+                            applicants[appUsername] = true;
+                            break;
+                        // @ts-ignore
+                        case postPurpose.Rejection: // @ts-ignore
+                            applicants[appUsername] = true;
+                            break;
+                        case postPurpose.Application:
+                            applicants[appUsername] = false;
+                            break;
                     }
                     console.log("Username: " + userName);
                     console.log("Post Purpose: " + purpose.toString());
                     console.log("Post content: " + resultString);
-                    results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " + purpose + "\n";
                     if (results.length > 1000) {
                         message.channel.send(results);
                         results = "";
                     }
                     results += "-------------------------------" + "\n";
                 });
+                for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
+                    var _b = _a[_i], key = _b[0], value = _b[1];
+                    results += key + " has bumped the thread " + value + " times\n";
+                }
+                for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
+                    var _e = _d[_c], key = _e[0], value = _e[1];
+                    results += key + " has applied";
+                    if (value) {
+                        results += " and has been processed \n";
+                    }
+                    else {
+                        results += " and needs to have their app looked at here: " + settings_json_1.default.baseUrl + ",goto," +
+                            currentPage + "\n";
+                    }
+                }
                 if (results.length > 0) {
                     message.channel.send(results);
                 }
@@ -135,7 +174,9 @@ var renderElement = function (elem) {
         postText += elem.data;
         if (elem.data.includes("Username:")) {
             appUsername = elem.data.split(":")[1].trim();
-            purpose = postPurpose.Application;
+            if (appUsername.length > 0) {
+                purpose = postPurpose.Application;
+            }
         }
         else if (elem.data.includes(settings_json_1.default.acceptanceString)) {
             purpose = postPurpose.Acceptance;
