@@ -72,7 +72,6 @@ client.once("ready", function () {
     var priorBumpers = {};
     var applicants = {};
     var priorApplicants = {};
-    var shouldPollForums = false;
     var hasNewPost = false;
     var promises = [];
     function checkForums(message, notifyMeOnNoNewPosts) {
@@ -191,6 +190,15 @@ client.once("ready", function () {
             if (message.content === "!forums") {
                 message.channel.send("Checking forums now.");
                 checkForums(message);
+            }
+            else if (message.content === "!reset") {
+                message.channel.send("Resetting data");
+                bumpers = {};
+                applicants = {};
+                priorApplicants = {};
+                priorBumpers = {};
+                results = "";
+                hasNewPost = false;
             }
             return [2 /*return*/];
         });

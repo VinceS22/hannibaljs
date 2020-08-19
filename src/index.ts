@@ -17,7 +17,6 @@ client.once("ready", () => {
     let priorBumpers: {[poster: string]: number} = {};
     let applicants: {[poster: string]: boolean} = {};
     let priorApplicants: {[poster: string]: boolean} = {};
-    let shouldPollForums: boolean = false;
     let hasNewPost: boolean = false;
 
     const promises: any[] = [];
@@ -130,6 +129,14 @@ client.once("ready", () => {
         if (message.content === "!forums") {
             message.channel.send("Checking forums now.");
             checkForums(message);
+        } else if (message.content === "!reset") {
+            message.channel.send("Resetting data");
+            bumpers = {};
+            applicants = {};
+            priorApplicants = {};
+            priorBumpers = {};
+            results = "";
+            hasNewPost = false;
         }
         // I can't be assed to throw this on another branch right now, but it's here. I need to get polling working.
         // TODO: Actually implement !pollforums and !pollforums properly
