@@ -87,7 +87,6 @@ client.once("ready", function () {
             for (currentPage; currentPage <= lastPage; currentPage++) {
                 getWebPage(settings_json_1.default.baseUrl + ",goto," + currentPage).then(function (data) {
                     var _a;
-                    console.log('Web call');
                     $ = cheerio_1.default.load(data);
                     lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
                     $("article.forum-post").map(function (index, element) {
@@ -248,9 +247,6 @@ var renderElement = function (elem) {
                 purpose = element.purpose;
             }
         });
-    }
-    else {
-        console.log(elem.data);
     }
     return { appUsername: appUsername, purpose: purpose, postText: postText };
 };
