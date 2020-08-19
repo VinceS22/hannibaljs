@@ -168,8 +168,8 @@ client.once("ready", function () {
                     }
                     hasNewPost = true;
                 }
-                else if (applicants[key]) {
-                    results += applicants[key] + " still needs to be reviewed\n";
+                else if (!applicants[key]) {
+                    results += key + " still needs to be reviewed\n";
                     hasNewPost = true;
                 }
             }
@@ -192,20 +192,6 @@ client.once("ready", function () {
             if (message.content === "!forums") {
                 message.channel.send("Checking forums now.");
                 checkForums(message);
-            }
-            else if (message.content === "!pollforums") {
-                message.channel.send("Activating poll mode.");
-                shouldPollForums = true;
-                while (shouldPollForums) {
-                    checkForums(message);
-                    setInterval(function () {
-                        checkForums(message);
-                    }, 1000 * 20);
-                }
-            }
-            else if (message.content === "!stoppollforums") {
-                message.channel.send("Deactivating poll mode.");
-                shouldPollForums = false;
             }
             return [2 /*return*/];
         });

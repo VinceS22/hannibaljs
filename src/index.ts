@@ -108,8 +108,8 @@ client.once("ready", () => {
                         results += " Here\'s your command: !rw " + key + "\n";
                     }
                     hasNewPost = true;
-                } else if (applicants[key]) {
-                    results += applicants[key] + " still needs to be reviewed\n";
+                } else if (!applicants[key]) {
+                    results += key + " still needs to be reviewed\n";
                     hasNewPost = true;
                 }
             }
@@ -131,19 +131,23 @@ client.once("ready", () => {
         if (message.content === "!forums") {
             message.channel.send("Checking forums now.");
             checkForums(message);
-        } else if (message.content === "!pollforums") {
-            message.channel.send("Activating poll mode.");
-            shouldPollForums = true;
-            while (shouldPollForums) {
-                checkForums(message);
-                setInterval(() => {
-                    checkForums(message);
-                }, 1000 * 20);
-            }
-        } else if (message.content === "!stoppollforums") {
-            message.channel.send("Deactivating poll mode.");
-            shouldPollForums = false;
         }
+        // I can't be assed to throw this on another branch right now, but it's here. I need to get polling working.
+        // TODO: Actually implement !pollforums and !pollforums properly
+        // else if (message.content === "!pollforums") {
+        //     message.channel.send("Activating poll mode.");
+        //     shouldPollForums = true;
+        //     while (shouldPollForums) {
+        //         checkForums(message);
+        //         setInterval(() => {
+        //             checkForums(message);
+        //         }, 1000 * 20);
+        //     }
+        // } else if (message.content === "!stoppollforums") {
+        // } else if (message.content === "!stoppollforums") {
+        //     message.channel.send("Deactivating poll mode.");
+        //     shouldPollForums = false;
+        // }
     });
 });
 
