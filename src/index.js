@@ -73,20 +73,22 @@ client.once("ready", function () {
     var applicants = {};
     var priorApplicants = {};
     var hasNewPost = false;
-    var promises = [];
+    var promises = new Array();
     function checkForums(message, notifyMeOnNoNewPosts) {
         if (notifyMeOnNoNewPosts === void 0) { notifyMeOnNoNewPosts = true; }
         // True if the user has a corresponding accept/reject
-        promises.push(getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
-            var _a;
+        getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
             var $ = cheerio_1.default.load(pageNumData);
-            lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
+            //lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+            lastPage = 122;
             currentPage = lastPage - 1;
             results += "Checking page " + currentPage + " and " + lastPage + "...\n";
-            for (currentPage; currentPage <= lastPage; currentPage++) {
-                getWebPage(settings_json_1.default.baseUrl + ",goto," + currentPage).then(function (data) {
+            var _loop_1 = function () {
+                var url = settings_json_1.default.baseUrl + ",goto," + currentPage;
+                var p = getWebPage(url).then(function (data) {
                     var _a;
                     $ = cheerio_1.default.load(data);
+                    // tslint:disable-next-line:radix
                     lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
                     $("article.forum-post").map(function (index, element) {
                         var userName = $("h3", element).data("displayname").replace("%A0", " ");
@@ -106,7 +108,7 @@ client.once("ready", function () {
                         });
                         // @ts-ignore
                         if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
-                            applicants[appUsername] = true;
+                            applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
                         }
                         else if (appUsername.length > 0) {
                             purpose = postPurpose.Application;
@@ -134,62 +136,68 @@ client.once("ready", function () {
                                 break;
                             case postPurpose.Application:
                                 if (!applicants[appUsername]) {
-                                    applicants[appUsername] = false;
+                                    applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
                                 }
                                 break;
                         }
                     });
                 });
-            }
-        }));
-        // This is using a timeout. It's gross and I hate it.
-        // TODO: Figure out how to incorporate promises correctly for this.
-        setTimeout(function () {
-            for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
-                var _b = _a[_i], key = _b[0], value = _b[1];
-                if (bumpers[key] !== priorBumpers[key]) {
-                    results += key + " has bumped the thread " + value + " times\n";
-                    hasNewPost = true;
+                if (p) {
+                    promises.push(p);
                 }
+            };
+            for (currentPage; currentPage <= lastPage; currentPage++) {
+                _loop_1();
             }
-            for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
-                var _e = _d[_c], key = _e[0], value = _e[1];
-                if (priorApplicants[key] !== applicants[key]) {
-                    results += key + " has applied";
-                    if (value) {
-                        results += " and has been reviewed \n";
+            Promise.all(promises).then(function (promise) {
+                var _a, _b;
+                for (var _i = 0, _c = Object.entries(bumpers); _i < _c.length; _i++) {
+                    var _d = _c[_i], key = _d[0], value = _d[1];
+                    if (bumpers[key] !== priorBumpers[key]) {
+                        results += key + " has bumped the thread " + value + " times\n";
+                        hasNewPost = true;
                     }
-                    else {
-                        results += " and needs to have their app looked at here: " + settings_json_1.default.baseUrl +
-                            ",goto," + currentPage + "\n";
-                        results += " Here\'s your command: !rw " + key + "\n";
+                }
+                for (var _e = 0, _f = Object.entries(applicants); _e < _f.length; _e++) {
+                    var _g = _f[_e], key = _g[0], value = _g[1];
+                    if (((_a = priorApplicants[key]) === null || _a === void 0 ? void 0 : _a.hasBeenReviewed) !== ((_b = applicants[key]) === null || _b === void 0 ? void 0 : _b.hasBeenReviewed)) {
+                        results += key + " has applied";
+                        if (value.hasBeenReviewed) {
+                            results += " and has been reviewed \n";
+                        }
+                        else {
+                            results += " and needs to have their app looked at here: " + value.url;
+                            results += " Here\'s your command: !rw " + key + "\n";
+                        }
+                        hasNewPost = true;
                     }
-                    hasNewPost = true;
+                    else if (!applicants[key]) {
+                        results += key + " still needs to be reviewed\n";
+                        hasNewPost = true;
+                    }
                 }
-                else if (!applicants[key]) {
-                    results += key + " still needs to be reviewed\n";
-                    hasNewPost = true;
+                if (hasNewPost || debug) {
+                    message.channel.send(results);
                 }
-            }
-            if (hasNewPost || debug) {
-                message.channel.send(results);
-            }
-            else {
-                message.channel.send("Nothing new!");
-            }
-            priorBumpers = bumpers;
-            priorApplicants = applicants;
-            bumpers = {};
-            applicants = {};
-            results = "";
-            hasNewPost = false;
-        }, 10 * 1000); // * 1000 makes it seconds
+                else {
+                    message.channel.send("Nothing new!");
+                }
+                priorBumpers = bumpers;
+                priorApplicants = applicants;
+                bumpers = {};
+                applicants = {};
+                results = "";
+                hasNewPost = false;
+            });
+        });
     }
     client.on("message", function (message) { return __awaiter(void 0, void 0, void 0, function () {
         return __generator(this, function (_a) {
             if (message.content === "!forums") {
                 message.channel.send("Checking forums now.");
                 checkForums(message);
+            }
+            else if (message.content === "!") {
             }
             else if (message.content === "!reset") {
                 message.channel.send("Resetting data");

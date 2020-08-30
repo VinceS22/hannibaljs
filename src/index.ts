@@ -2,9 +2,9 @@ import * as Discord from "discord.js";
 import {IncomingMessage} from "http";
 
 import cheerio from "cheerio";
+import {Message} from "discord.js";
 import https from "https";
 import settings from "./settings.json";
-import {Message} from "discord.js";
 
 const client = new Discord.Client();
 
@@ -15,22 +15,26 @@ client.once("ready", () => {
     const debug = false;
     let bumpers: {[poster: string]: number} = {};
     let priorBumpers: {[poster: string]: number} = {};
-    let applicants: {[poster: string]: boolean} = {};
-    let priorApplicants: {[poster: string]: boolean} = {};
+    let applicants: {[poster: string]: IApplicant} = {};
+    let priorApplicants: {[poster: string]: IApplicant} = {};
     let hasNewPost: boolean = false;
 
-    const promises: any[] = [];
+    const promises: Array<Promise<string | void>> = new Array <Promise<string | void>>();
 
     function checkForums(message: Message, notifyMeOnNoNewPosts: boolean = true) {
         // True if the user has a corresponding accept/reject
-        promises.push(getWebPage(settings.baseUrl).then((pageNumData) => {
+        getWebPage(settings.baseUrl).then((pageNumData) => {
             let $ = cheerio.load(pageNumData);
-            lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+            //lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+            lastPage = 122;
             currentPage = lastPage - 1;
             results += "Checking page " + currentPage + " and " + lastPage + "...\n";
             for (currentPage; currentPage <= lastPage; currentPage++) {
-                getWebPage(settings.baseUrl + ",goto," + currentPage).then((data) => {
+                const url = settings.baseUrl + ",goto," + currentPage;
+                const p: Promise<string | void > =
+                  getWebPage(url).then((data) => {
                     $ = cheerio.load(data);
+                    // tslint:disable-next-line:radix
                     lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
                     $("article.forum-post").map((index: number, element: CheerioElement) => {
                         const userName = $("h3", element).data("displayname").replace("%A0", " ");
@@ -51,7 +55,7 @@ client.once("ready", () => {
 
                         // @ts-ignore
                         if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
-                            applicants[appUsername] = true;
+                            applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
                         } else if (appUsername.length > 0) {
                             purpose = postPurpose.Application;
                         }
@@ -77,58 +81,58 @@ client.once("ready", () => {
                                 break;
                             case postPurpose.Application:
                                 if (!applicants[appUsername]) {
-                                    applicants[appUsername] = false;
+                                    applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
                                 }
                                 break;
                         }
                     });
 
                 });
+                if (p) { promises.push(p); }
             }
-        }));
-        // This is using a timeout. It's gross and I hate it.
-        // TODO: Figure out how to incorporate promises correctly for this.
-        setTimeout(() => {
-            for (const [key, value] of Object.entries(bumpers)) {
-                if (bumpers[key] !== priorBumpers[key]) {
-                    results += key + " has bumped the thread " + value + " times\n";
-                    hasNewPost = true;
-                }
-            }
-            for (const [key, value] of Object.entries(applicants)) {
-                if (priorApplicants[key] !== applicants[key]) {
-                    results += key + " has applied";
-                    if (value) {
-                        results += " and has been reviewed \n";
-                    } else {
-                        results += " and needs to have their app looked at here: " + settings.baseUrl +
-                          ",goto," + currentPage + "\n";
-                        results += " Here\'s your command: !rw " + key + "\n";
+            Promise.all(promises).then((promise) => {
+                for (const [key, value] of Object.entries(bumpers)) {
+                    if (bumpers[key] !== priorBumpers[key]) {
+                        results += key + " has bumped the thread " + value + " times\n";
+                        hasNewPost = true;
                     }
-                    hasNewPost = true;
-                } else if (!applicants[key]) {
-                    results += key + " still needs to be reviewed\n";
-                    hasNewPost = true;
                 }
-            }
-            if (hasNewPost || debug) {
-                message.channel.send(results);
-            } else {
-                message.channel.send("Nothing new!");
-            }
-            priorBumpers = bumpers;
-            priorApplicants = applicants;
-            bumpers = {};
-            applicants = {};
-            results = "";
-            hasNewPost = false;
-        }, 10 * 1000); // * 1000 makes it seconds
+                for (const [key, value] of Object.entries(applicants)) {
+                    if (priorApplicants[key]?.hasBeenReviewed !== applicants[key]?.hasBeenReviewed) {
+                        results += key + " has applied";
+                        if (value.hasBeenReviewed) {
+                            results += " and has been reviewed \n";
+                        } else {
+                            results += " and needs to have their app looked at here: " + value.url;
+                            results += " Here\'s your command: !rw " + key + "\n";
+                        }
+                        hasNewPost = true;
+                    } else if (!applicants[key]) {
+                        results += key + " still needs to be reviewed\n";
+                        hasNewPost = true;
+                    }
+                }
+                if (hasNewPost || debug) {
+                    message.channel.send(results);
+                } else {
+                    message.channel.send("Nothing new!");
+                }
+                priorBumpers = bumpers;
+                priorApplicants = applicants;
+                bumpers = {};
+                applicants = {};
+                results = "";
+                hasNewPost = false;
+            });
+        });
     }
 
     client.on("message", async (message) => {
         if (message.content === "!forums") {
             message.channel.send("Checking forums now.");
             checkForums(message);
+        } else if (message.content === "!") {
+
         } else if (message.content === "!reset") {
             message.channel.send("Resetting data");
             bumpers = {};
@@ -160,16 +164,22 @@ client.once("ready", () => {
 client.login(settings.token);
 
 enum postPurpose {
-    Bump="Bump",
-    Application="Application",
-    Acceptance="Acceptance",
-    Rejection="Rejection",
+    Bump= "Bump",
+    Application= "Application",
+    Acceptance= "Acceptance",
+    Rejection= "Rejection",
 }
 interface IPostResults {
     postText: string;
     purpose: postPurpose;
     appUsername: string;
 }
+interface IApplicant {
+    hasBeenReviewed: boolean;
+    url: string;
+    username: string;
+}
+
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
 const renderElement = (elem: CheerioElement): IPostResults => {
     let postText = "";
@@ -183,9 +193,9 @@ const renderElement = (elem: CheerioElement): IPostResults => {
             if (appUsername.length > 0) {
                 purpose = postPurpose.Application;
             }
-        } else if(elem.data.includes(settings.acceptanceString)) {
+        } else if (elem.data.includes(settings.acceptanceString)) {
             purpose = postPurpose.Acceptance;
-        } else if(elem.data.includes(settings.rejectionString)) {
+        } else if (elem.data.includes(settings.rejectionString)) {
             purpose = postPurpose.Rejection;
         }
 
@@ -206,7 +216,7 @@ const renderElement = (elem: CheerioElement): IPostResults => {
         elem.children.forEach((nestedElement) => {
             const element = renderElement(nestedElement);
             postText += element.postText;
-            if(element.purpose === postPurpose.Acceptance || element.purpose === postPurpose.Rejection) {
+            if (element.purpose === postPurpose.Acceptance || element.purpose === postPurpose.Rejection) {
                 purpose = element.purpose;
             }
         });
@@ -216,7 +226,7 @@ const renderElement = (elem: CheerioElement): IPostResults => {
 
 //  HTTP Get method implementation:
 async function getWebPage(url = "", data = {}): Promise<string>  {
-    return new Promise((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
         https.get(url, (response: IncomingMessage) => {
             let responseData = "";
             response.on("data", (chunk) => {
