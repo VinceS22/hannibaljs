@@ -21,28 +21,19 @@ client.once("ready", () => {
 
     const promises: Array<Promise<string | void>> = new Array <Promise<string | void>>();
 
-    function reset() {
-        bumpers = {};
-        applicants = {};
-        priorApplicants = {};
-        priorBumpers = {};
-        results = "";
-        hasNewPost = false;
-    }
-    
     function checkForums(message: Message, notifyMeOnNoNewPosts: boolean = true) {
         // True if the user has a corresponding accept/reject
         getWebPage(settings.baseUrl).then((pageNumData) => {
             let $ = cheerio.load(pageNumData);
-            //lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
-            lastPage = 122;
+            // lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+            lastPage = 120;
             currentPage = lastPage - 1;
             results += "Checking page " + currentPage + " and " + lastPage + "...\n";
             for (currentPage; currentPage <= lastPage; currentPage++) {
                 const url = settings.baseUrl + ",goto," + currentPage;
-                const p: Promise<string | void > =
+                const postPromise: Promise<string | void > =
                   getWebPage(url).then((data) => {
-                    $ = cheerio.load(data);
+                      $ = cheerio.load(data);
                     // tslint:disable-next-line:radix
                     lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
                     $("article.forum-post").map((index: number, element: CheerioElement) => {
@@ -59,45 +50,32 @@ client.once("ready", () => {
                             }
                             if (renderedElement.appUsername) {
                                 appUsername = renderedElement.appUsername;
+                                applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
+                            }
+                            if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                                applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
+                            } else if (applicants[appUsername] && !applicants[appUsername].hasBeenReviewed) {
+                                purpose = postPurpose.Bump;
                             }
                         });
-
-                        // @ts-ignore
-                        if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                        if (purpose === postPurpose.Bump) {
+                            if (bumpers[userName]) {
+                                bumpers[userName]++;
+                            } else {
+                                bumpers[userName] = 1;
+                            }
+                        } else if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
                             applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
-                        } else if (appUsername.length > 0) {
-                            purpose = postPurpose.Application;
                         }
                         if (debug) {
                             results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
                               purpose + "\n";
                         }
-                        switch (purpose) {
-                            case postPurpose.Bump:
-                                if (bumpers[userName]) {
-                                    bumpers[userName]++;
-                                } else {
-                                    bumpers[userName] = 1;
-                                }
-                                break;
-                          // @ts-ignore
-                            case postPurpose.Acceptance: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                          // @ts-ignore
-                            case postPurpose.Rejection: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                            case postPurpose.Application:
-                                if (!applicants[appUsername]) {
-                                    applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
-                                }
-                                break;
-                        }
+
                     });
 
                 });
-                if (p) { promises.push(p); }
+                if (postPromise) { promises.push(postPromise); }
             }
             Promise.all(promises).then((promise) => {
                 for (const [key, value] of Object.entries(bumpers)) {
@@ -108,7 +86,7 @@ client.once("ready", () => {
                 }
                 for (const [key, value] of Object.entries(applicants)) {
                     if (priorApplicants[key]?.hasBeenReviewed !== applicants[key]?.hasBeenReviewed) {
-                        results += key + " has applied";
+                        results += applicants[key].username + " has applied";
                         if (value.hasBeenReviewed) {
                             results += " and has been reviewed \n";
                         } else {
@@ -126,7 +104,12 @@ client.once("ready", () => {
                 } else {
                     message.channel.send("Nothing new!");
                 }
-                reset();
+                priorBumpers = bumpers;
+                priorApplicants = applicants;
+                bumpers = {};
+                applicants = {};
+                results = "";
+                hasNewPost = false;
             });
         });
     }
@@ -139,7 +122,12 @@ client.once("ready", () => {
 
         } else if (message.content === "!reset") {
             message.channel.send("Resetting data");
-            reset();
+            bumpers = {};
+            applicants = {};
+            priorApplicants = {};
+            priorBumpers = {};
+            results = "";
+            hasNewPost = false;
         }
         // I can't be assed to throw this on another branch right now, but it's here. I need to get polling working.
         // TODO: Actually implement !pollforums and !pollforums properly
@@ -158,7 +146,6 @@ client.once("ready", () => {
         //     shouldPollForums = false;
         // }
     });
-
 });
 
 client.login(settings.token);
@@ -181,17 +168,19 @@ interface IApplicant {
 }
 
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
-const renderElement = (elem: CheerioElement): IPostResults => {
+const renderElement = (elem: CheerioElement, inQuote: boolean = false, applicant: string = ""): IPostResults => {
     let postText = "";
     let purpose: postPurpose = postPurpose.Bump;
     let appUsername = "";
     if (elem.type === "text" && elem.data) { // Line with actual text in it
         postText += elem.data;
 
-        if (elem.data.includes("Username:")) {
+        if (applicant.length > 0 && elem.data.includes("Username:"))  {
             appUsername = elem.data.split(":")[1].trim();
             if (appUsername.length > 0) {
-                purpose = postPurpose.Application;
+                if (!inQuote) {
+                    purpose = postPurpose.Application;
+                }
             }
         } else if (elem.data.includes(settings.acceptanceString)) {
             purpose = postPurpose.Acceptance;
@@ -204,7 +193,7 @@ const renderElement = (elem: CheerioElement): IPostResults => {
     } else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
         let spanContents = "";
         spanContents = elem.children.map((nestedElement) => {
-            const elementContent = renderElement(nestedElement);
+            const elementContent = renderElement(nestedElement, true, applicant);
             // Yank the username from the quoted text and set it if we have it.
             if (elementContent.appUsername) {
                 appUsername = elementContent.appUsername;

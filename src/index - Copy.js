@@ -74,26 +74,18 @@ client.once("ready", function () {
     var priorApplicants = {};
     var hasNewPost = false;
     var promises = new Array();
-    function reset() {
-        bumpers = {};
-        applicants = {};
-        priorApplicants = {};
-        priorBumpers = {};
-        results = "";
-        hasNewPost = false;
-    }
     function checkForums(message, notifyMeOnNoNewPosts) {
         if (notifyMeOnNoNewPosts === void 0) { notifyMeOnNoNewPosts = true; }
         // True if the user has a corresponding accept/reject
         getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
             var $ = cheerio_1.default.load(pageNumData);
-            //lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
-            lastPage = 122;
+            // lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+            lastPage = 120;
             currentPage = lastPage - 1;
             results += "Checking page " + currentPage + " and " + lastPage + "...\n";
             var _loop_1 = function () {
                 var url = settings_json_1.default.baseUrl + ",goto," + currentPage;
-                var p = getWebPage(url).then(function (data) {
+                var postPromise = getWebPage(url).then(function (data) {
                     var _a;
                     $ = cheerio_1.default.load(data);
                     // tslint:disable-next-line:radix
@@ -112,46 +104,34 @@ client.once("ready", function () {
                             }
                             if (renderedElement.appUsername) {
                                 appUsername = renderedElement.appUsername;
+                                applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
+                            }
+                            if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                                applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
+                            }
+                            else if (applicants[appUsername] && !applicants[appUsername].hasBeenReviewed) {
+                                purpose = postPurpose.Bump;
                             }
                         });
-                        // @ts-ignore
-                        if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
-                            applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
+                        if (purpose === postPurpose.Bump) {
+                            if (bumpers[userName]) {
+                                bumpers[userName]++;
+                            }
+                            else {
+                                bumpers[userName] = 1;
+                            }
                         }
-                        else if (appUsername.length > 0) {
-                            purpose = postPurpose.Application;
+                        else if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                            applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
                         }
                         if (debug) {
                             results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
                                 purpose + "\n";
                         }
-                        switch (purpose) {
-                            case postPurpose.Bump:
-                                if (bumpers[userName]) {
-                                    bumpers[userName]++;
-                                }
-                                else {
-                                    bumpers[userName] = 1;
-                                }
-                                break;
-                            // @ts-ignore
-                            case postPurpose.Acceptance: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                            // @ts-ignore
-                            case postPurpose.Rejection: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                            case postPurpose.Application:
-                                if (!applicants[appUsername]) {
-                                    applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
-                                }
-                                break;
-                        }
                     });
                 });
-                if (p) {
-                    promises.push(p);
+                if (postPromise) {
+                    promises.push(postPromise);
                 }
             };
             for (currentPage; currentPage <= lastPage; currentPage++) {
@@ -169,7 +149,7 @@ client.once("ready", function () {
                 for (var _e = 0, _f = Object.entries(applicants); _e < _f.length; _e++) {
                     var _g = _f[_e], key = _g[0], value = _g[1];
                     if (((_a = priorApplicants[key]) === null || _a === void 0 ? void 0 : _a.hasBeenReviewed) !== ((_b = applicants[key]) === null || _b === void 0 ? void 0 : _b.hasBeenReviewed)) {
-                        results += key + " has applied";
+                        results += applicants[key].username + " has applied";
                         if (value.hasBeenReviewed) {
                             results += " and has been reviewed \n";
                         }
@@ -190,7 +170,12 @@ client.once("ready", function () {
                 else {
                     message.channel.send("Nothing new!");
                 }
-                reset();
+                priorBumpers = bumpers;
+                priorApplicants = applicants;
+                bumpers = {};
+                applicants = {};
+                results = "";
+                hasNewPost = false;
             });
         });
     }
@@ -204,7 +189,12 @@ client.once("ready", function () {
             }
             else if (message.content === "!reset") {
                 message.channel.send("Resetting data");
-                reset();
+                bumpers = {};
+                applicants = {};
+                priorApplicants = {};
+                priorBumpers = {};
+                results = "";
+                hasNewPost = false;
             }
             return [2 /*return*/];
         });
@@ -219,16 +209,20 @@ var postPurpose;
     postPurpose["Rejection"] = "Rejection";
 })(postPurpose || (postPurpose = {}));
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
-var renderElement = function (elem) {
+var renderElement = function (elem, inQuote, applicant) {
+    if (inQuote === void 0) { inQuote = false; }
+    if (applicant === void 0) { applicant = ""; }
     var postText = "";
     var purpose = postPurpose.Bump;
     var appUsername = "";
     if (elem.type === "text" && elem.data) { // Line with actual text in it
         postText += elem.data;
-        if (elem.data.includes("Username:")) {
+        if (applicant.length > 0 && elem.data.includes("Username:")) {
             appUsername = elem.data.split(":")[1].trim();
             if (appUsername.length > 0) {
-                purpose = postPurpose.Application;
+                if (!inQuote) {
+                    purpose = postPurpose.Application;
+                }
             }
         }
         else if (elem.data.includes(settings_json_1.default.acceptanceString)) {
@@ -244,7 +238,7 @@ var renderElement = function (elem) {
     else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
         var spanContents = "";
         spanContents = elem.children.map(function (nestedElement) {
-            var elementContent = renderElement(nestedElement);
+            var elementContent = renderElement(nestedElement, true, applicant);
             // Yank the username from the quoted text and set it if we have it.
             if (elementContent.appUsername) {
                 appUsername = elementContent.appUsername;
