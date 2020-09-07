@@ -86,11 +86,10 @@ client.once("ready", function () {
         if (notifyMeOnNoNewPosts === void 0) { notifyMeOnNoNewPosts = true; }
         // True if the user has a corresponding accept/reject
         getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
+            var _a;
             var $ = cheerio_1.default.load(pageNumData);
-            //lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
-            lastPage = 122;
+            lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
             currentPage = lastPage - 1;
-            results += "Checking page " + currentPage + " and " + lastPage + "...\n";
             var _loop_1 = function () {
                 var url = settings_json_1.default.baseUrl + ",goto," + currentPage;
                 var p = getWebPage(url).then(function (data) {
@@ -104,6 +103,7 @@ client.once("ready", function () {
                         var resultString = "";
                         var appUsername = "";
                         var purpose = postPurpose.Bump;
+                        var purposeArr = new Array();
                         postContent.each(function (i, elem) {
                             var renderedElement = renderElement(elem);
                             resultString += renderedElement.postText;
@@ -113,40 +113,30 @@ client.once("ready", function () {
                             if (renderedElement.appUsername) {
                                 appUsername = renderedElement.appUsername;
                             }
+                            purposeArr.push(purpose);
                         });
+                        console.log(purposeArr);
                         // @ts-ignore
                         if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
                             applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
                         }
-                        else if (appUsername.length > 0) {
-                            purpose = postPurpose.Application;
+                        else if (purpose === postPurpose.Bump) {
+                            if (bumpers[userName]) {
+                                bumpers[userName]++;
+                            }
+                            else {
+                                bumpers[userName] = 1;
+                            }
+                        }
+                        else if (purpose === postPurpose.Application) {
+                            if (!applicants[appUsername]) {
+                                applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
+                            }
                         }
                         if (debug) {
                             results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
                                 purpose + "\n";
-                        }
-                        switch (purpose) {
-                            case postPurpose.Bump:
-                                if (bumpers[userName]) {
-                                    bumpers[userName]++;
-                                }
-                                else {
-                                    bumpers[userName] = 1;
-                                }
-                                break;
-                            // @ts-ignore
-                            case postPurpose.Acceptance: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                            // @ts-ignore
-                            case postPurpose.Rejection: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                            case postPurpose.Application:
-                                if (!applicants[appUsername]) {
-                                    applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
-                                }
-                                break;
+                            console.log("page: " + currentPage + results);
                         }
                     });
                 });
@@ -174,7 +164,7 @@ client.once("ready", function () {
                             results += " and has been reviewed \n";
                         }
                         else {
-                            results += " and needs to have their app looked at here: " + value.url;
+                            results += " and needs to have their app looked at here: <" + value.url + ">";
                             results += " Here\'s your command: !rw " + key + "\n";
                         }
                         hasNewPost = true;
@@ -236,6 +226,9 @@ var renderElement = function (elem) {
         }
         else if (elem.data.includes(settings_json_1.default.rejectionString)) {
             purpose = postPurpose.Rejection;
+        }
+        else if (elem.data.includes("is your favorite thing to do in-")) {
+            purpose = postPurpose.Application;
         }
     }
     else if (elem.type === "tag" && elem.name === "br") { // Standard linebreak

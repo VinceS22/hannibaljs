@@ -29,19 +29,16 @@ client.once("ready", () => {
         results = "";
         hasNewPost = false;
     }
-    
     function checkForums(message: Message, notifyMeOnNoNewPosts: boolean = true) {
         // True if the user has a corresponding accept/reject
         getWebPage(settings.baseUrl).then((pageNumData) => {
             let $ = cheerio.load(pageNumData);
-            //lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
-            lastPage = 122;
+            lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
             currentPage = lastPage - 1;
-            results += "Checking page " + currentPage + " and " + lastPage + "...\n";
             for (currentPage; currentPage <= lastPage; currentPage++) {
                 const url = settings.baseUrl + ",goto," + currentPage;
                 const p: Promise<string | void > =
-                  getWebPage(url).then((data) => {
+                  getWebPage(url).then((data) => { // Scope: Page
                     $ = cheerio.load(data);
                     // tslint:disable-next-line:radix
                     lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
@@ -51,7 +48,8 @@ client.once("ready", () => {
                         let resultString = "";
                         let appUsername = "";
                         let purpose = postPurpose.Bump;
-                        postContent.each((i, elem) => {
+                        const purposeArr: postPurpose[] = new Array<postPurpose>();
+                        postContent.each((i, elem) => { // Scope: Post Content "Node"
                             const renderedElement = renderElement(elem);
                             resultString += renderedElement.postText;
                             if (renderedElement.purpose !== postPurpose.Bump) {
@@ -60,39 +58,27 @@ client.once("ready", () => {
                             if (renderedElement.appUsername) {
                                 appUsername = renderedElement.appUsername;
                             }
+                            purposeArr.push(purpose);
                         });
-
+                        console.log(purposeArr);
                         // @ts-ignore
                         if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
                             applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
-                        } else if (appUsername.length > 0) {
-                            purpose = postPurpose.Application;
+                        } else if(purpose === postPurpose.Bump) {
+                            if (bumpers[userName]) {
+                                bumpers[userName]++;
+                            } else {
+                                bumpers[userName] = 1;
+                            }
+                        } else if (purpose === postPurpose.Application) {
+                            if (!applicants[appUsername]) {
+                                applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
+                            }
                         }
                         if (debug) {
                             results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
                               purpose + "\n";
-                        }
-                        switch (purpose) {
-                            case postPurpose.Bump:
-                                if (bumpers[userName]) {
-                                    bumpers[userName]++;
-                                } else {
-                                    bumpers[userName] = 1;
-                                }
-                                break;
-                          // @ts-ignore
-                            case postPurpose.Acceptance: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                          // @ts-ignore
-                            case postPurpose.Rejection: // @ts-ignore
-                                applicants[appUsername] = true;
-                                break;
-                            case postPurpose.Application:
-                                if (!applicants[appUsername]) {
-                                    applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
-                                }
-                                break;
+                            console.log("page: " + currentPage + results);
                         }
                     });
 
@@ -112,7 +98,7 @@ client.once("ready", () => {
                         if (value.hasBeenReviewed) {
                             results += " and has been reviewed \n";
                         } else {
-                            results += " and needs to have their app looked at here: " + value.url;
+                            results += " and needs to have their app looked at here: <" + value.url + ">";
                             results += " Here\'s your command: !rw " + key + "\n";
                         }
                         hasNewPost = true;
@@ -141,24 +127,7 @@ client.once("ready", () => {
             message.channel.send("Resetting data");
             reset();
         }
-        // I can't be assed to throw this on another branch right now, but it's here. I need to get polling working.
-        // TODO: Actually implement !pollforums and !pollforums properly
-        // else if (message.content === "!pollforums") {
-        //     message.channel.send("Activating poll mode.");
-        //     shouldPollForums = true;
-        //     while (shouldPollForums) {
-        //         checkForums(message);
-        //         setInterval(() => {
-        //             checkForums(message);
-        //         }, 1000 * 20);
-        //     }
-        // } else if (message.content === "!stoppollforums") {
-        // } else if (message.content === "!stoppollforums") {
-        //     message.channel.send("Deactivating poll mode.");
-        //     shouldPollForums = false;
-        // }
     });
-
 });
 
 client.login(settings.token);
@@ -197,6 +166,8 @@ const renderElement = (elem: CheerioElement): IPostResults => {
             purpose = postPurpose.Acceptance;
         } else if (elem.data.includes(settings.rejectionString)) {
             purpose = postPurpose.Rejection;
+        } else if (elem.data.includes("is your favorite thing to do in-")) {
+            purpose = postPurpose.Application;
         }
 
     } else if (elem.type === "tag" && elem.name === "br") { // Standard linebreak
