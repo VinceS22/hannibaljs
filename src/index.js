@@ -149,13 +149,16 @@ client.once("ready", function () {
             }
             Promise.all(promises).then(function (promise) {
                 var _a, _b;
+                results += "Bumps: ";
                 for (var _i = 0, _c = Object.entries(bumpers); _i < _c.length; _i++) {
                     var _d = _c[_i], key = _d[0], value = _d[1];
                     if (bumpers[key] !== priorBumpers[key]) {
-                        results += key + " has bumped the thread " + value + " times\n";
+                        results += key + " x " + value + " | ";
                         hasNewPost = true;
                     }
                 }
+                results = results.slice(0, -2);
+                results += "\n";
                 for (var _e = 0, _f = Object.entries(applicants); _e < _f.length; _e++) {
                     var _g = _f[_e], key = _g[0], value = _g[1];
                     if (((_a = priorApplicants[key]) === null || _a === void 0 ? void 0 : _a.hasBeenReviewed) !== ((_b = applicants[key]) === null || _b === void 0 ? void 0 : _b.hasBeenReviewed)) {

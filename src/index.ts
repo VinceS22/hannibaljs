@@ -86,12 +86,15 @@ client.once("ready", () => {
                 if (p) { promises.push(p); }
             }
             Promise.all(promises).then((promise) => {
+                results += "Bumps: ";
                 for (const [key, value] of Object.entries(bumpers)) {
                     if (bumpers[key] !== priorBumpers[key]) {
-                        results += key + " has bumped the thread " + value + " times\n";
+                        results += key + " x " + value + " | ";
                         hasNewPost = true;
                     }
                 }
+                results = results.slice(0, -2);
+                results += "\n";
                 for (const [key, value] of Object.entries(applicants)) {
                     if (priorApplicants[key]?.hasBeenReviewed !== applicants[key]?.hasBeenReviewed) {
                         results += key + " has applied";
