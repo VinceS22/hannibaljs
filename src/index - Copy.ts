@@ -21,25 +21,19 @@ client.once("ready", () => {
 
     const promises: Array<Promise<string | void>> = new Array <Promise<string | void>>();
 
-    function reset() {
-        bumpers = {};
-        applicants = {};
-        priorApplicants = {};
-        priorBumpers = {};
-        results = "";
-        hasNewPost = false;
-    }
     function checkForums(message: Message, notifyMeOnNoNewPosts: boolean = true) {
         // True if the user has a corresponding accept/reject
         getWebPage(settings.baseUrl).then((pageNumData) => {
             let $ = cheerio.load(pageNumData);
-            lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+            // lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
+            lastPage = 120;
             currentPage = lastPage - 1;
+            results += "Checking page " + currentPage + " and " + lastPage + "...\n";
             for (currentPage; currentPage <= lastPage; currentPage++) {
                 const url = settings.baseUrl + ",goto," + currentPage;
-                const p: Promise<string | void > =
-                  getWebPage(url).then((data) => { // Scope: Page
-                    $ = cheerio.load(data);
+                const postPromise: Promise<string | void > =
+                  getWebPage(url).then((data) => {
+                      $ = cheerio.load(data);
                     // tslint:disable-next-line:radix
                     lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
                     $("article.forum-post").map((index: number, element: CheerioElement) => {
@@ -48,8 +42,7 @@ client.once("ready", () => {
                         let resultString = "";
                         let appUsername = "";
                         let purpose = postPurpose.Bump;
-                        const purposeArr: postPurpose[] = new Array<postPurpose>();
-                        postContent.each((i, elem) => { // Scope: Post Content "Node"
+                        postContent.each((i, elem) => {
                             const renderedElement = renderElement(elem);
                             resultString += renderedElement.postText;
                             if (renderedElement.purpose !== postPurpose.Bump) {
@@ -57,33 +50,32 @@ client.once("ready", () => {
                             }
                             if (renderedElement.appUsername) {
                                 appUsername = renderedElement.appUsername;
+                                applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
                             }
-                            purposeArr.push(purpose);
+                            if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                                applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
+                            } else if (applicants[appUsername] && !applicants[appUsername].hasBeenReviewed) {
+                                purpose = postPurpose.Bump;
+                            }
                         });
-                        console.log(purposeArr);
-                        // @ts-ignore
-                        if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
-                            applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
-                        } else if(purpose === postPurpose.Bump) {
+                        if (purpose === postPurpose.Bump) {
                             if (bumpers[userName]) {
                                 bumpers[userName]++;
                             } else {
                                 bumpers[userName] = 1;
                             }
-                        } else if (purpose === postPurpose.Application) {
-                            if (!applicants[appUsername]) {
-                                applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
-                            }
+                        } else if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                            applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
                         }
                         if (debug) {
                             results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
                               purpose + "\n";
-                            console.log("page: " + currentPage + results);
                         }
+
                     });
 
                 });
-                if (p) { promises.push(p); }
+                if (postPromise) { promises.push(postPromise); }
             }
             Promise.all(promises).then((promise) => {
                 for (const [key, value] of Object.entries(bumpers)) {
@@ -94,11 +86,11 @@ client.once("ready", () => {
                 }
                 for (const [key, value] of Object.entries(applicants)) {
                     if (priorApplicants[key]?.hasBeenReviewed !== applicants[key]?.hasBeenReviewed) {
-                        results += key + " has applied";
+                        results += applicants[key].username + " has applied";
                         if (value.hasBeenReviewed) {
                             results += " and has been reviewed \n";
                         } else {
-                            results += " and needs to have their app looked at here: <" + value.url + ">";
+                            results += " and needs to have their app looked at here: " + value.url;
                             results += " Here\'s your command: !rw " + key + "\n";
                         }
                         hasNewPost = true;
@@ -112,7 +104,12 @@ client.once("ready", () => {
                 } else {
                     message.channel.send("Nothing new!");
                 }
-                reset();
+                priorBumpers = bumpers;
+                priorApplicants = applicants;
+                bumpers = {};
+                applicants = {};
+                results = "";
+                hasNewPost = false;
             });
         });
     }
@@ -125,8 +122,29 @@ client.once("ready", () => {
 
         } else if (message.content === "!reset") {
             message.channel.send("Resetting data");
-            reset();
+            bumpers = {};
+            applicants = {};
+            priorApplicants = {};
+            priorBumpers = {};
+            results = "";
+            hasNewPost = false;
         }
+        // I can't be assed to throw this on another branch right now, but it's here. I need to get polling working.
+        // TODO: Actually implement !pollforums and !pollforums properly
+        // else if (message.content === "!pollforums") {
+        //     message.channel.send("Activating poll mode.");
+        //     shouldPollForums = true;
+        //     while (shouldPollForums) {
+        //         checkForums(message);
+        //         setInterval(() => {
+        //             checkForums(message);
+        //         }, 1000 * 20);
+        //     }
+        // } else if (message.content === "!stoppollforums") {
+        // } else if (message.content === "!stoppollforums") {
+        //     message.channel.send("Deactivating poll mode.");
+        //     shouldPollForums = false;
+        // }
     });
 });
 
@@ -150,24 +168,24 @@ interface IApplicant {
 }
 
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
-const renderElement = (elem: CheerioElement): IPostResults => {
+const renderElement = (elem: CheerioElement, inQuote: boolean = false, applicant: string = ""): IPostResults => {
     let postText = "";
     let purpose: postPurpose = postPurpose.Bump;
     let appUsername = "";
     if (elem.type === "text" && elem.data) { // Line with actual text in it
         postText += elem.data;
 
-        if (elem.data.includes("Username:")) {
+        if (applicant.length > 0 && elem.data.includes("Username:"))  {
             appUsername = elem.data.split(":")[1].trim();
             if (appUsername.length > 0) {
-                purpose = postPurpose.Application;
+                if (!inQuote) {
+                    purpose = postPurpose.Application;
+                }
             }
         } else if (elem.data.includes(settings.acceptanceString)) {
             purpose = postPurpose.Acceptance;
         } else if (elem.data.includes(settings.rejectionString)) {
             purpose = postPurpose.Rejection;
-        } else if (elem.data.includes("is your favorite thing to do in-")) {
-            purpose = postPurpose.Application;
         }
 
     } else if (elem.type === "tag" && elem.name === "br") { // Standard linebreak
@@ -175,7 +193,7 @@ const renderElement = (elem: CheerioElement): IPostResults => {
     } else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
         let spanContents = "";
         spanContents = elem.children.map((nestedElement) => {
-            const elementContent = renderElement(nestedElement);
+            const elementContent = renderElement(nestedElement, true, applicant);
             // Yank the username from the quoted text and set it if we have it.
             if (elementContent.appUsername) {
                 appUsername = elementContent.appUsername;
