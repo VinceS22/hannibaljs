@@ -98,7 +98,7 @@ client.once("ready", function () {
                     // tslint:disable-next-line:radix
                     lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
                     $("article.forum-post").map(function (index, element) {
-                        var userName = $("h3", element).data("displayname").replace("%A0", " ");
+                        var userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
                         var postContent = $(".forum-post__body", element).eq(0).contents();
                         var resultString = "";
                         var appUsername = "";
@@ -149,6 +149,7 @@ client.once("ready", function () {
             }
             Promise.all(promises).then(function (promise) {
                 var _a, _b;
+                results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
                 results += "Bumps: ";
                 for (var _i = 0, _c = Object.entries(bumpers); _i < _c.length; _i++) {
                     var _d = _c[_i], key = _d[0], value = _d[1];
@@ -159,16 +160,16 @@ client.once("ready", function () {
                 }
                 results = results.slice(0, -2);
                 results += "\n";
+                var processedApplicantsStr = "";
+                var unprocessedApplicantsStr = "";
                 for (var _e = 0, _f = Object.entries(applicants); _e < _f.length; _e++) {
                     var _g = _f[_e], key = _g[0], value = _g[1];
                     if (((_a = priorApplicants[key]) === null || _a === void 0 ? void 0 : _a.hasBeenReviewed) !== ((_b = applicants[key]) === null || _b === void 0 ? void 0 : _b.hasBeenReviewed)) {
-                        results += key + " has applied";
                         if (value.hasBeenReviewed) {
-                            results += " and has been reviewed \n";
+                            processedApplicantsStr += key + "\n";
                         }
                         else {
-                            results += " and needs to have their app looked at here: <" + value.url + ">";
-                            results += " Here\'s your command: !rw " + key + "\n";
+                            unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
                         }
                         hasNewPost = true;
                     }
@@ -176,6 +177,14 @@ client.once("ready", function () {
                         results += key + " still needs to be reviewed\n";
                         hasNewPost = true;
                     }
+                }
+                if (processedApplicantsStr.length > 0) {
+                    results += "**Processed Applicants:**\n";
+                    results += processedApplicantsStr;
+                }
+                if (unprocessedApplicantsStr.length > 0) {
+                    results += "**Unprocessed Applicants:**\n";
+                    results += unprocessedApplicantsStr;
                 }
                 if (hasNewPost || debug) {
                     message.channel.send(results);
@@ -211,6 +220,17 @@ var postPurpose;
     postPurpose["Acceptance"] = "Acceptance";
     postPurpose["Rejection"] = "Rejection";
 })(postPurpose || (postPurpose = {}));
+var toCompareApplicants = function (obj1, obj2) {
+    if (obj1.hasBeenReviewed === obj2.hasBeenReviewed) {
+        return 0;
+    }
+    else if (obj1.hasBeenReviewed) {
+        return 1;
+    }
+    else {
+        return -1;
+    }
+};
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
 var renderElement = function (elem) {
     var postText = "";

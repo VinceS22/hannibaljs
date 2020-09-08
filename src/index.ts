@@ -43,7 +43,7 @@ client.once("ready", () => {
                     // tslint:disable-next-line:radix
                     lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
                     $("article.forum-post").map((index: number, element: CheerioElement) => {
-                        const userName = $("h3", element).data("displayname").replace("%A0", " ");
+                        const userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
                         const postContent = $(".forum-post__body", element).eq(0).contents();
                         let resultString = "";
                         let appUsername = "";
@@ -86,6 +86,7 @@ client.once("ready", () => {
                 if (p) { promises.push(p); }
             }
             Promise.all(promises).then((promise) => {
+                results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
                 results += "Bumps: ";
                 for (const [key, value] of Object.entries(bumpers)) {
                     if (bumpers[key] !== priorBumpers[key]) {
@@ -95,20 +96,29 @@ client.once("ready", () => {
                 }
                 results = results.slice(0, -2);
                 results += "\n";
+
+                let processedApplicantsStr = "";
+                let unprocessedApplicantsStr = "";
                 for (const [key, value] of Object.entries(applicants)) {
                     if (priorApplicants[key]?.hasBeenReviewed !== applicants[key]?.hasBeenReviewed) {
-                        results += key + " has applied";
                         if (value.hasBeenReviewed) {
-                            results += " and has been reviewed \n";
+                            processedApplicantsStr +=  key + "\n";
                         } else {
-                            results += " and needs to have their app looked at here: <" + value.url + ">";
-                            results += " Here\'s your command: !rw " + key + "\n";
+                            unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
                         }
                         hasNewPost = true;
                     } else if (!applicants[key]) {
                         results += key + " still needs to be reviewed\n";
                         hasNewPost = true;
                     }
+                }
+                if (processedApplicantsStr.length > 0) {
+                    results += "**Processed Applicants:**\n";
+                    results += processedApplicantsStr;
+                }
+                if (unprocessedApplicantsStr.length > 0) {
+                    results += "**Unprocessed Applicants:**\n";
+                    results += unprocessedApplicantsStr;
                 }
                 if (hasNewPost || debug) {
                     message.channel.send(results);
@@ -150,6 +160,16 @@ interface IApplicant {
     hasBeenReviewed: boolean;
     url: string;
     username: string;
+}
+
+const toCompareApplicants = (obj1: IApplicant, obj2: IApplicant): number => {
+    if(obj1.hasBeenReviewed === obj2.hasBeenReviewed) {
+        return 0;
+    } else if (obj1.hasBeenReviewed) {
+        return 1;
+    } else {
+        return -1;
+    }
 }
 
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
