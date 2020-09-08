@@ -103,7 +103,6 @@ client.once("ready", function () {
                         var resultString = "";
                         var appUsername = "";
                         var purpose = postPurpose.Bump;
-                        var purposeArr = new Array();
                         postContent.each(function (i, elem) {
                             var renderedElement = renderElement(elem);
                             resultString += renderedElement.postText;
@@ -113,9 +112,7 @@ client.once("ready", function () {
                             if (renderedElement.appUsername) {
                                 appUsername = renderedElement.appUsername;
                             }
-                            purposeArr.push(purpose);
                         });
-                        console.log(purposeArr);
                         // @ts-ignore
                         if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
                             applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
@@ -179,11 +176,14 @@ client.once("ready", function () {
                 }
                 if (hasNewPost || debug) {
                     message.channel.send(results);
+                    hasNewPost = false;
                 }
                 else {
                     message.channel.send("Nothing new!");
                 }
-                reset();
+                priorBumpers = bumpers;
+                priorApplicants = applicants;
+                hasNewPost = false;
             });
         });
     }
