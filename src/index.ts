@@ -18,7 +18,6 @@ client.once("ready", () => {
     let applicants: {[poster: string]: IApplicant} = {};
     let priorApplicants: {[poster: string]: IApplicant} = {};
     let hasNewPost: boolean = false;
-
     const promises: Array<Promise<string | void>> = new Array <Promise<string | void>>();
 
     function reset() {
@@ -48,7 +47,6 @@ client.once("ready", () => {
                         let resultString = "";
                         let appUsername = "";
                         let purpose = postPurpose.Bump;
-                        const purposeArr: postPurpose[] = new Array<postPurpose>();
                         postContent.each((i, elem) => { // Scope: Post Content "Node"
                             const renderedElement = renderElement(elem);
                             resultString += renderedElement.postText;
@@ -58,9 +56,7 @@ client.once("ready", () => {
                             if (renderedElement.appUsername) {
                                 appUsername = renderedElement.appUsername;
                             }
-                            purposeArr.push(purpose);
                         });
-                        console.log(purposeArr);
                         // @ts-ignore
                         if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
                             applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
@@ -122,10 +118,13 @@ client.once("ready", () => {
                 }
                 if (hasNewPost || debug) {
                     message.channel.send(results);
+                    hasNewPost = false;
                 } else {
                     message.channel.send("Nothing new!");
                 }
-                reset();
+                priorBumpers = bumpers;
+                priorApplicants = applicants;
+                hasNewPost = false;
             });
         });
     }
