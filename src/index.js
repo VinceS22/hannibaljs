@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
@@ -58,6 +69,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.deepCopy = void 0;
 var Discord = __importStar(require("discord.js"));
 var cheerio_1 = __importDefault(require("cheerio"));
 var https_1 = __importDefault(require("https"));
@@ -72,18 +84,20 @@ client.once("ready", function () {
     var priorBumpers = {};
     var applicants = {};
     var priorApplicants = {};
-    var hasNewPost = false;
-    var promises = new Array();
+    var hasNewApplicantResults = false;
+    var hasNewBumps = false;
     function reset() {
         bumpers = {};
         applicants = {};
         priorApplicants = {};
         priorBumpers = {};
         results = "";
-        hasNewPost = false;
+        hasNewApplicantResults = false;
+        hasNewBumps = false;
     }
     function checkForums(message, notifyMeOnNoNewPosts) {
         if (notifyMeOnNoNewPosts === void 0) { notifyMeOnNoNewPosts = true; }
+        var promises = new Array();
         // True if the user has a corresponding accept/reject
         getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
             var _a;
@@ -93,10 +107,8 @@ client.once("ready", function () {
             var _loop_1 = function () {
                 var url = settings_json_1.default.baseUrl + ",goto," + currentPage;
                 var p = getWebPage(url).then(function (data) {
-                    var _a;
                     $ = cheerio_1.default.load(data);
                     // tslint:disable-next-line:radix
-                    lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
                     $("article.forum-post").map(function (index, element) {
                         var userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
                         var postContent = $(".forum-post__body", element).eq(0).contents();
@@ -145,54 +157,61 @@ client.once("ready", function () {
                 _loop_1();
             }
             Promise.all(promises).then(function (promise) {
-                var _a, _b;
                 results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
                 results += "Bumps: ";
-                for (var _i = 0, _c = Object.entries(bumpers); _i < _c.length; _i++) {
-                    var _d = _c[_i], key = _d[0], value = _d[1];
+                for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
+                    var _b = _a[_i], key = _b[0], value = _b[1];
                     if (bumpers[key] !== priorBumpers[key]) {
                         results += key + " x " + value + " | ";
-                        hasNewPost = true;
+                        hasNewBumps = true;
                     }
                 }
                 results = results.slice(0, -2);
                 results += "\n";
                 var processedApplicantsStr = "";
                 var unprocessedApplicantsStr = "";
-                for (var _e = 0, _f = Object.entries(applicants); _e < _f.length; _e++) {
-                    var _g = _f[_e], key = _g[0], value = _g[1];
-                    if (((_a = priorApplicants[key]) === null || _a === void 0 ? void 0 : _a.hasBeenReviewed) !== ((_b = applicants[key]) === null || _b === void 0 ? void 0 : _b.hasBeenReviewed)) {
+                for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
+                    var _e = _d[_c], key = _e[0], value = _e[1];
+                    if (!priorApplicants[key] ||
+                        priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
                         if (value.hasBeenReviewed) {
                             processedApplicantsStr += key + "\n";
                         }
                         else {
                             unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
                         }
-                        hasNewPost = true;
+                        hasNewApplicantResults = true;
                     }
                     else if (!applicants[key]) {
                         results += key + " still needs to be reviewed\n";
-                        hasNewPost = true;
+                        hasNewApplicantResults = true;
                     }
                 }
-                if (processedApplicantsStr.length > 0) {
-                    results += "**Processed Applicants:**\n";
-                    results += processedApplicantsStr;
+                if (hasNewApplicantResults) {
+                    if (processedApplicantsStr.length > 0) {
+                        results += "**Processed Applicants:**\n";
+                        results += processedApplicantsStr;
+                    }
+                    if (unprocessedApplicantsStr.length > 0) {
+                        results += "**Unprocessed Applicants:**\n";
+                        results += unprocessedApplicantsStr;
+                    }
                 }
-                if (unprocessedApplicantsStr.length > 0) {
-                    results += "**Unprocessed Applicants:**\n";
-                    results += unprocessedApplicantsStr;
-                }
-                if (hasNewPost || debug) {
+                if (hasNewApplicantResults || hasNewBumps || debug) {
+                    hasNewApplicantResults = false;
+                    hasNewBumps = false;
                     message.channel.send(results);
-                    hasNewPost = false;
                 }
                 else {
                     message.channel.send("Nothing new!");
                 }
-                priorBumpers = bumpers;
-                priorApplicants = applicants;
-                hasNewPost = false;
+                priorBumpers = exports.deepCopy(bumpers);
+                priorApplicants = exports.deepCopy(applicants);
+                bumpers = {};
+                applicants = {};
+                hasNewApplicantResults = false;
+                hasNewBumps = false;
+                results = "";
             });
         });
     }
@@ -202,7 +221,9 @@ client.once("ready", function () {
                 message.channel.send("Checking forums now.");
                 checkForums(message);
             }
-            else if (message.content === "!") {
+            else if (message.content === "!inc") {
+                lastPage++;
+                message.channel.send("Last Page: " + lastPage);
             }
             else if (message.content === "!reset") {
                 message.channel.send("Resetting data");
@@ -220,17 +241,6 @@ var postPurpose;
     postPurpose["Acceptance"] = "Acceptance";
     postPurpose["Rejection"] = "Rejection";
 })(postPurpose || (postPurpose = {}));
-var toCompareApplicants = function (obj1, obj2) {
-    if (obj1.hasBeenReviewed === obj2.hasBeenReviewed) {
-        return 0;
-    }
-    else if (obj1.hasBeenReviewed) {
-        return 1;
-    }
-    else {
-        return -1;
-    }
-};
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
 var renderElement = function (elem) {
     var postText = "";
@@ -303,3 +313,31 @@ function getWebPage(url, data) {
         });
     });
 }
+/**
+ * Deep copy function for TypeScript.
+ * @param T Generic type of target/copied value.
+ * @param target Target value to be copied.
+ * @see Source project, ts-deepcopy https://github.com/ykdr2017/ts-deepcopy
+ * @see Code pen https://codepen.io/erikvullings/pen/ejyBYg
+ */
+exports.deepCopy = function (target) {
+    if (target === null) {
+        return target;
+    }
+    if (target instanceof Date) {
+        return new Date(target.getTime());
+    }
+    if (target instanceof Array) {
+        var cp_1 = [];
+        target.forEach(function (v) { cp_1.push(v); });
+        return cp_1.map(function (n) { return exports.deepCopy(n); });
+    }
+    if (typeof target === 'object' && target !== {}) {
+        var cp_2 = __assign({}, target);
+        Object.keys(cp_2).forEach(function (k) {
+            cp_2[k] = exports.deepCopy(cp_2[k]);
+        });
+        return cp_2;
+    }
+    return target;
+};

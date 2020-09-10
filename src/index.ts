@@ -17,8 +17,8 @@ client.once("ready", () => {
     let priorBumpers: {[poster: string]: number} = {};
     let applicants: {[poster: string]: IApplicant} = {};
     let priorApplicants: {[poster: string]: IApplicant} = {};
-    let hasNewPost: boolean = false;
-    const promises: Array<Promise<string | void>> = new Array <Promise<string | void>>();
+    let hasNewApplicantResults: boolean = false;
+    let hasNewBumps: boolean = false;
 
     function reset() {
         bumpers = {};
@@ -26,9 +26,11 @@ client.once("ready", () => {
         priorApplicants = {};
         priorBumpers = {};
         results = "";
-        hasNewPost = false;
+        hasNewApplicantResults = false;
+        hasNewBumps = false;
     }
     function checkForums(message: Message, notifyMeOnNoNewPosts: boolean = true) {
+        const promises: Array<Promise<string | void>> = new Array <Promise<string | void>>();
         // True if the user has a corresponding accept/reject
         getWebPage(settings.baseUrl).then((pageNumData) => {
             let $ = cheerio.load(pageNumData);
@@ -40,7 +42,6 @@ client.once("ready", () => {
                   getWebPage(url).then((data) => { // Scope: Page
                     $ = cheerio.load(data);
                     // tslint:disable-next-line:radix
-                    lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
                     $("article.forum-post").map((index: number, element: CheerioElement) => {
                         const userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
                         const postContent = $(".forum-post__body", element).eq(0).contents();
@@ -87,7 +88,7 @@ client.once("ready", () => {
                 for (const [key, value] of Object.entries(bumpers)) {
                     if (bumpers[key] !== priorBumpers[key]) {
                         results += key + " x " + value + " | ";
-                        hasNewPost = true;
+                        hasNewBumps = true;
                     }
                 }
                 results = results.slice(0, -2);
@@ -96,35 +97,43 @@ client.once("ready", () => {
                 let processedApplicantsStr = "";
                 let unprocessedApplicantsStr = "";
                 for (const [key, value] of Object.entries(applicants)) {
-                    if (priorApplicants[key]?.hasBeenReviewed !== applicants[key]?.hasBeenReviewed) {
+                    if (!priorApplicants[key] ||
+                      priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
                         if (value.hasBeenReviewed) {
                             processedApplicantsStr +=  key + "\n";
                         } else {
                             unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
                         }
-                        hasNewPost = true;
+                        hasNewApplicantResults = true;
                     } else if (!applicants[key]) {
                         results += key + " still needs to be reviewed\n";
-                        hasNewPost = true;
+                        hasNewApplicantResults = true;
                     }
                 }
-                if (processedApplicantsStr.length > 0) {
-                    results += "**Processed Applicants:**\n";
-                    results += processedApplicantsStr;
+                if(hasNewApplicantResults) {
+                    if (processedApplicantsStr.length > 0) {
+                        results += "**Processed Applicants:**\n";
+                        results += processedApplicantsStr;
+                    }
+                    if (unprocessedApplicantsStr.length > 0) {
+                        results += "**Unprocessed Applicants:**\n";
+                        results += unprocessedApplicantsStr;
+                    }
                 }
-                if (unprocessedApplicantsStr.length > 0) {
-                    results += "**Unprocessed Applicants:**\n";
-                    results += unprocessedApplicantsStr;
-                }
-                if (hasNewPost || debug) {
+                if (hasNewApplicantResults || hasNewBumps || debug) {
+                    hasNewApplicantResults = false;
+                    hasNewBumps = false;
                     message.channel.send(results);
-                    hasNewPost = false;
                 } else {
                     message.channel.send("Nothing new!");
                 }
-                priorBumpers = bumpers;
-                priorApplicants = applicants;
-                hasNewPost = false;
+                priorBumpers = deepCopy(bumpers);
+                priorApplicants = deepCopy(applicants);
+                bumpers = {};
+                applicants = {};
+                hasNewApplicantResults = false;
+                hasNewBumps = false;
+                results = "";
             });
         });
     }
@@ -133,8 +142,9 @@ client.once("ready", () => {
         if (message.content === "!forums") {
             message.channel.send("Checking forums now.");
             checkForums(message);
-        } else if (message.content === "!") {
-
+        } else if (message.content === "!inc") {
+            lastPage++;
+            message.channel.send("Last Page: " + lastPage);
         } else if (message.content === "!reset") {
             message.channel.send("Resetting data");
             reset();
@@ -159,16 +169,6 @@ interface IApplicant {
     hasBeenReviewed: boolean;
     url: string;
     username: string;
-}
-
-const toCompareApplicants = (obj1: IApplicant, obj2: IApplicant): number => {
-    if(obj1.hasBeenReviewed === obj2.hasBeenReviewed) {
-        return 0;
-    } else if (obj1.hasBeenReviewed) {
-        return 1;
-    } else {
-        return -1;
-    }
 }
 
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
@@ -236,3 +236,32 @@ async function getWebPage(url = "", data = {}): Promise<string>  {
     });
 
 }
+
+/**
+ * Deep copy function for TypeScript.
+ * @param T Generic type of target/copied value.
+ * @param target Target value to be copied.
+ * @see Source project, ts-deepcopy https://github.com/ykdr2017/ts-deepcopy
+ * @see Code pen https://codepen.io/erikvullings/pen/ejyBYg
+ */
+export const deepCopy = <T>(target: T): T => {
+    if (target === null) {
+        return target;
+    }
+    if (target instanceof Date) {
+        return new Date(target.getTime()) as any;
+    }
+    if (target instanceof Array) {
+        const cp = [] as any[];
+        (target as any[]).forEach((v) => { cp.push(v); });
+        return cp.map((n: any) => deepCopy<any>(n)) as any;
+    }
+    if (typeof target === 'object' && target !== {}) {
+        const cp = { ...(target as { [key: string]: any }) } as { [key: string]: any };
+        Object.keys(cp).forEach(k => {
+            cp[k] = deepCopy<any>(cp[k]);
+        });
+        return cp as T;
+    }
+    return target;
+};
