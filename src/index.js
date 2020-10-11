@@ -69,161 +69,192 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deepCopy = void 0;
-var Discord = __importStar(require("discord.js"));
+exports.deepCopy = exports.renderElement = exports.checkForums = void 0;
 var cheerio_1 = __importDefault(require("cheerio"));
-var https_1 = __importDefault(require("https"));
+var Discord = __importStar(require("discord.js"));
+var fetch = require('node-fetch');
 var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
+var results = "";
+var debug = false;
+var priorBumpers = {};
+var priorApplicants = {};
+function checkForums(message, settings) {
+    return __awaiter(this, void 0, void 0, function () {
+        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, promises;
+        var _this = this;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    currentPage = -1;
+                    lastPage = -1;
+                    bumpers = {};
+                    applicants = {};
+                    hasNewBumps = false;
+                    hasNewApplicantResults = false;
+                    promises = new Array();
+                    // True if the user has a corresponding accept/reject
+                    return [4 /*yield*/, fetch(settings.baseUrl).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
+                            var data, $, _loop_1;
+                            var _a;
+                            return __generator(this, function (_b) {
+                                switch (_b.label) {
+                                    case 0:
+                                        data = pageNumData;
+                                        $ = cheerio_1.default.load(data);
+                                        lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
+                                        currentPage = lastPage - 1;
+                                        _loop_1 = function () {
+                                            var url, p;
+                                            return __generator(this, function (_a) {
+                                                switch (_a.label) {
+                                                    case 0:
+                                                        url = settings.baseUrl + ",goto," + currentPage;
+                                                        return [4 /*yield*/, fetch(settings.baseUrl).then(function (res) { return res.text(); }).then(function (d) {
+                                                                $ = cheerio_1.default.load(d);
+                                                                // tslint:disable-next-line:radix
+                                                                $("article.forum-post").map(function (index, element) {
+                                                                    var userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
+                                                                    var postContent = $(".forum-post__body", element).eq(0).contents();
+                                                                    var resultString = "";
+                                                                    var appUsername = "";
+                                                                    var purpose = postPurpose.Bump;
+                                                                    postContent.each(function (i, elem) {
+                                                                        var renderedElement = exports.renderElement(elem, settings);
+                                                                        resultString += renderedElement.postText;
+                                                                        if (renderedElement.purpose !== postPurpose.Bump) {
+                                                                            purpose = renderedElement.purpose;
+                                                                        }
+                                                                        if (renderedElement.appUsername) {
+                                                                            appUsername = renderedElement.appUsername;
+                                                                        }
+                                                                    });
+                                                                    // @ts-ignore
+                                                                    if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                                                                        applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
+                                                                    }
+                                                                    else if (purpose === postPurpose.Bump) {
+                                                                        if (bumpers[userName]) {
+                                                                            bumpers[userName]++;
+                                                                        }
+                                                                        else {
+                                                                            bumpers[userName] = 1;
+                                                                        }
+                                                                    }
+                                                                    else if (purpose === postPurpose.Application) {
+                                                                        if (!applicants[appUsername]) {
+                                                                            applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
+                                                                        }
+                                                                    }
+                                                                    if (debug) {
+                                                                        results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
+                                                                            purpose + "\n";
+                                                                    }
+                                                                });
+                                                            })];
+                                                    case 1:
+                                                        p = _a.sent();
+                                                        if (p) {
+                                                            promises.push(p);
+                                                        }
+                                                        return [2 /*return*/];
+                                                }
+                                            });
+                                        };
+                                        currentPage;
+                                        _b.label = 1;
+                                    case 1:
+                                        if (!(currentPage <= lastPage)) return [3 /*break*/, 4];
+                                        return [5 /*yield**/, _loop_1()];
+                                    case 2:
+                                        _b.sent();
+                                        _b.label = 3;
+                                    case 3:
+                                        currentPage++;
+                                        return [3 /*break*/, 1];
+                                    case 4: return [2 /*return*/];
+                                }
+                            });
+                        }); })];
+                case 1:
+                    // True if the user has a corresponding accept/reject
+                    _a.sent();
+                    return [2 /*return*/, Promise.all(promises).then(function (promise) {
+                            var forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults,
+                                hasNewBumps: hasNewBumps, lastPage: lastPage };
+                            results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
+                            results += "Bumps: ";
+                            for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
+                                var _b = _a[_i], key = _b[0], value = _b[1];
+                                if (bumpers[key] !== priorBumpers[key]) {
+                                    results += key + " x " + value + " | ";
+                                    hasNewBumps = true;
+                                }
+                            }
+                            results = results.slice(0, -2);
+                            results += "\n";
+                            var processedApplicantsStr = "";
+                            var unprocessedApplicantsStr = "";
+                            for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
+                                var _e = _d[_c], key = _e[0], value = _e[1];
+                                if (!priorApplicants[key] ||
+                                    priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
+                                    if (value.hasBeenReviewed) {
+                                        processedApplicantsStr += key + "\n";
+                                    }
+                                    else {
+                                        unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
+                                    }
+                                    hasNewApplicantResults = true;
+                                }
+                                else if (!applicants[key]) {
+                                    results += key + " still needs to be reviewed\n";
+                                    hasNewApplicantResults = true;
+                                }
+                            }
+                            if (hasNewApplicantResults) {
+                                if (processedApplicantsStr.length > 0) {
+                                    results += "**Processed Applicants:**\n";
+                                    results += processedApplicantsStr;
+                                }
+                                if (unprocessedApplicantsStr.length > 0) {
+                                    results += "**Unprocessed Applicants:**\n";
+                                    results += unprocessedApplicantsStr;
+                                }
+                            }
+                            if (hasNewApplicantResults || hasNewBumps || debug) {
+                                hasNewApplicantResults = false;
+                                hasNewBumps = false;
+                                message.channel.send(results);
+                            }
+                            else {
+                                message.channel.send("Nothing new!");
+                            }
+                            priorBumpers = exports.deepCopy(bumpers);
+                            priorApplicants = exports.deepCopy(applicants);
+                            bumpers = {};
+                            applicants = {};
+                            hasNewApplicantResults = false;
+                            hasNewBumps = false;
+                            results = "";
+                            return forumResults;
+                        })];
+            }
+        });
+    });
+}
+exports.checkForums = checkForums;
 client.once("ready", function () {
-    var results = "";
-    var currentPage = -1;
-    var lastPage = -1;
-    var debug = false;
-    var bumpers = {};
-    var priorBumpers = {};
-    var applicants = {};
-    var priorApplicants = {};
-    var hasNewApplicantResults = false;
-    var hasNewBumps = false;
     function reset() {
-        bumpers = {};
-        applicants = {};
         priorApplicants = {};
         priorBumpers = {};
         results = "";
-        hasNewApplicantResults = false;
-        hasNewBumps = false;
-    }
-    function checkForums(message, notifyMeOnNoNewPosts) {
-        if (notifyMeOnNoNewPosts === void 0) { notifyMeOnNoNewPosts = true; }
-        var promises = new Array();
-        // True if the user has a corresponding accept/reject
-        getWebPage(settings_json_1.default.baseUrl).then(function (pageNumData) {
-            var _a;
-            var $ = cheerio_1.default.load(pageNumData);
-            lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
-            currentPage = lastPage - 1;
-            var _loop_1 = function () {
-                var url = settings_json_1.default.baseUrl + ",goto," + currentPage;
-                var p = getWebPage(url).then(function (data) {
-                    $ = cheerio_1.default.load(data);
-                    // tslint:disable-next-line:radix
-                    $("article.forum-post").map(function (index, element) {
-                        var userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
-                        var postContent = $(".forum-post__body", element).eq(0).contents();
-                        var resultString = "";
-                        var appUsername = "";
-                        var purpose = postPurpose.Bump;
-                        postContent.each(function (i, elem) {
-                            var renderedElement = renderElement(elem);
-                            resultString += renderedElement.postText;
-                            if (renderedElement.purpose !== postPurpose.Bump) {
-                                purpose = renderedElement.purpose;
-                            }
-                            if (renderedElement.appUsername) {
-                                appUsername = renderedElement.appUsername;
-                            }
-                        });
-                        // @ts-ignore
-                        if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
-                            applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
-                        }
-                        else if (purpose === postPurpose.Bump) {
-                            if (bumpers[userName]) {
-                                bumpers[userName]++;
-                            }
-                            else {
-                                bumpers[userName] = 1;
-                            }
-                        }
-                        else if (purpose === postPurpose.Application) {
-                            if (!applicants[appUsername]) {
-                                applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
-                            }
-                        }
-                        if (debug) {
-                            results += "Current Poster's Username: " + userName + "\n" + "Post purpose: " +
-                                purpose + "\n";
-                            console.log("page: " + currentPage + results);
-                        }
-                    });
-                });
-                if (p) {
-                    promises.push(p);
-                }
-            };
-            for (currentPage; currentPage <= lastPage; currentPage++) {
-                _loop_1();
-            }
-            Promise.all(promises).then(function (promise) {
-                results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
-                results += "Bumps: ";
-                for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
-                    var _b = _a[_i], key = _b[0], value = _b[1];
-                    if (bumpers[key] !== priorBumpers[key]) {
-                        results += key + " x " + value + " | ";
-                        hasNewBumps = true;
-                    }
-                }
-                results = results.slice(0, -2);
-                results += "\n";
-                var processedApplicantsStr = "";
-                var unprocessedApplicantsStr = "";
-                for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
-                    var _e = _d[_c], key = _e[0], value = _e[1];
-                    if (!priorApplicants[key] ||
-                        priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
-                        if (value.hasBeenReviewed) {
-                            processedApplicantsStr += key + "\n";
-                        }
-                        else {
-                            unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
-                        }
-                        hasNewApplicantResults = true;
-                    }
-                    else if (!applicants[key]) {
-                        results += key + " still needs to be reviewed\n";
-                        hasNewApplicantResults = true;
-                    }
-                }
-                if (hasNewApplicantResults) {
-                    if (processedApplicantsStr.length > 0) {
-                        results += "**Processed Applicants:**\n";
-                        results += processedApplicantsStr;
-                    }
-                    if (unprocessedApplicantsStr.length > 0) {
-                        results += "**Unprocessed Applicants:**\n";
-                        results += unprocessedApplicantsStr;
-                    }
-                }
-                if (hasNewApplicantResults || hasNewBumps || debug) {
-                    hasNewApplicantResults = false;
-                    hasNewBumps = false;
-                    message.channel.send(results);
-                }
-                else {
-                    message.channel.send("Nothing new!");
-                }
-                priorBumpers = exports.deepCopy(bumpers);
-                priorApplicants = exports.deepCopy(applicants);
-                bumpers = {};
-                applicants = {};
-                hasNewApplicantResults = false;
-                hasNewBumps = false;
-                results = "";
-            });
-        });
     }
     client.on("message", function (message) { return __awaiter(void 0, void 0, void 0, function () {
         return __generator(this, function (_a) {
             if (message.content === "!forums") {
                 message.channel.send("Checking forums now.");
-                checkForums(message);
-            }
-            else if (message.content === "!inc") {
-                lastPage++;
-                message.channel.send("Last Page: " + lastPage);
+                checkForums(message, settings_json_1.default);
             }
             else if (message.content === "!reset") {
                 message.channel.send("Resetting data");
@@ -242,7 +273,7 @@ var postPurpose;
     postPurpose["Rejection"] = "Rejection";
 })(postPurpose || (postPurpose = {}));
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
-var renderElement = function (elem) {
+exports.renderElement = function (elem, settings) {
     var postText = "";
     var purpose = postPurpose.Bump;
     var appUsername = "";
@@ -254,10 +285,10 @@ var renderElement = function (elem) {
                 purpose = postPurpose.Application;
             }
         }
-        else if (elem.data.includes(settings_json_1.default.acceptanceString)) {
+        else if (elem.data.includes(settings.acceptanceString)) {
             purpose = postPurpose.Acceptance;
         }
-        else if (elem.data.includes(settings_json_1.default.rejectionString)) {
+        else if (elem.data.includes(settings.rejectionString)) {
             purpose = postPurpose.Rejection;
         }
         else if (elem.data.includes("is your favorite thing to do in-")) {
@@ -270,7 +301,7 @@ var renderElement = function (elem) {
     else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
         var spanContents = "";
         spanContents = elem.children.map(function (nestedElement) {
-            var elementContent = renderElement(nestedElement);
+            var elementContent = exports.renderElement(nestedElement, settings);
             // Yank the username from the quoted text and set it if we have it.
             if (elementContent.appUsername) {
                 appUsername = elementContent.appUsername;
@@ -281,7 +312,7 @@ var renderElement = function (elem) {
     }
     else if (elem.type === "tag" && elem.name === "div") { // A div with more elements in it
         elem.children.forEach(function (nestedElement) {
-            var element = renderElement(nestedElement);
+            var element = exports.renderElement(nestedElement, settings);
             postText += element.postText;
             if (element.purpose === postPurpose.Acceptance || element.purpose === postPurpose.Rejection) {
                 purpose = element.purpose;
@@ -290,29 +321,6 @@ var renderElement = function (elem) {
     }
     return { appUsername: appUsername, purpose: purpose, postText: postText };
 };
-//  HTTP Get method implementation:
-function getWebPage(url, data) {
-    if (url === void 0) { url = ""; }
-    if (data === void 0) { data = {}; }
-    return __awaiter(this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            return [2 /*return*/, new Promise(function (resolve, reject) {
-                    https_1.default.get(url, function (response) {
-                        var responseData = "";
-                        response.on("data", function (chunk) {
-                            responseData += chunk;
-                        });
-                        response.on("end", function () {
-                            resolve(responseData);
-                        });
-                    }).on("error", function (err) {
-                        console.log("Error: " + err.message);
-                        reject(err.message);
-                    });
-                })];
-        });
-    });
-}
 /**
  * Deep copy function for TypeScript.
  * @param T Generic type of target/copied value.
