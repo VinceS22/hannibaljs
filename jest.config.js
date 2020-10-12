@@ -3,6 +3,7 @@ module.exports = {
 	'roots': [
 		'<rootDir>/src',
 	],
+	'collectCoverage': false,
 	setupFiles: ['./setupJest.js'],
 	testEnvironment: 'node',
 	timers: 'fake',

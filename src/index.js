@@ -72,7 +72,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deepCopy = exports.renderElement = exports.checkForums = void 0;
 var cheerio_1 = __importDefault(require("cheerio"));
 var Discord = __importStar(require("discord.js"));
-var fetch = require('node-fetch');
+var node_fetch_1 = __importDefault(require("node-fetch"));
 var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 var results = "";
@@ -81,10 +81,10 @@ var priorBumpers = {};
 var priorApplicants = {};
 function checkForums(message, settings) {
     return __awaiter(this, void 0, void 0, function () {
-        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, promises;
+        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, forumResults, _i, _a, _b, key, value, processedApplicantsStr, unprocessedApplicantsStr, _c, _d, _e, key, value;
         var _this = this;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        return __generator(this, function (_f) {
+            switch (_f.label) {
                 case 0:
                     currentPage = -1;
                     lastPage = -1;
@@ -92,9 +92,8 @@ function checkForums(message, settings) {
                     applicants = {};
                     hasNewBumps = false;
                     hasNewApplicantResults = false;
-                    promises = new Array();
                     // True if the user has a corresponding accept/reject
-                    return [4 /*yield*/, fetch(settings.baseUrl).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
+                    return [4 /*yield*/, node_fetch_1.default(settings.baseUrl).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
                             var data, $, _loop_1;
                             var _a;
                             return __generator(this, function (_b) {
@@ -105,12 +104,12 @@ function checkForums(message, settings) {
                                         lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
                                         currentPage = lastPage - 1;
                                         _loop_1 = function () {
-                                            var url, p;
+                                            var url;
                                             return __generator(this, function (_a) {
                                                 switch (_a.label) {
                                                     case 0:
                                                         url = settings.baseUrl + ",goto," + currentPage;
-                                                        return [4 /*yield*/, fetch(settings.baseUrl).then(function (res) { return res.text(); }).then(function (d) {
+                                                        return [4 /*yield*/, node_fetch_1.default(url).then(function (res) { return res.text(); }).then(function (d) {
                                                                 $ = cheerio_1.default.load(d);
                                                                 // tslint:disable-next-line:radix
                                                                 $("article.forum-post").map(function (index, element) {
@@ -153,10 +152,7 @@ function checkForums(message, settings) {
                                                                 });
                                                             })];
                                                     case 1:
-                                                        p = _a.sent();
-                                                        if (p) {
-                                                            promises.push(p);
-                                                        }
+                                                        _a.sent();
                                                         return [2 /*return*/];
                                                 }
                                             });
@@ -178,67 +174,61 @@ function checkForums(message, settings) {
                         }); })];
                 case 1:
                     // True if the user has a corresponding accept/reject
-                    _a.sent();
-                    return [2 /*return*/, Promise.all(promises).then(function (promise) {
-                            var forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults,
-                                hasNewBumps: hasNewBumps, lastPage: lastPage };
-                            results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
-                            results += "Bumps: ";
-                            for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
-                                var _b = _a[_i], key = _b[0], value = _b[1];
-                                if (bumpers[key] !== priorBumpers[key]) {
-                                    results += key + " x " + value + " | ";
-                                    hasNewBumps = true;
-                                }
-                            }
-                            results = results.slice(0, -2);
-                            results += "\n";
-                            var processedApplicantsStr = "";
-                            var unprocessedApplicantsStr = "";
-                            for (var _c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
-                                var _e = _d[_c], key = _e[0], value = _e[1];
-                                if (!priorApplicants[key] ||
-                                    priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
-                                    if (value.hasBeenReviewed) {
-                                        processedApplicantsStr += key + "\n";
-                                    }
-                                    else {
-                                        unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
-                                    }
-                                    hasNewApplicantResults = true;
-                                }
-                                else if (!applicants[key]) {
-                                    results += key + " still needs to be reviewed\n";
-                                    hasNewApplicantResults = true;
-                                }
-                            }
-                            if (hasNewApplicantResults) {
-                                if (processedApplicantsStr.length > 0) {
-                                    results += "**Processed Applicants:**\n";
-                                    results += processedApplicantsStr;
-                                }
-                                if (unprocessedApplicantsStr.length > 0) {
-                                    results += "**Unprocessed Applicants:**\n";
-                                    results += unprocessedApplicantsStr;
-                                }
-                            }
-                            if (hasNewApplicantResults || hasNewBumps || debug) {
-                                hasNewApplicantResults = false;
-                                hasNewBumps = false;
-                                message.channel.send(results);
+                    _f.sent();
+                    forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults,
+                        hasNewBumps: hasNewBumps, lastPage: lastPage };
+                    results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
+                    results += "Bumps: ";
+                    for (_i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
+                        _b = _a[_i], key = _b[0], value = _b[1];
+                        if (bumpers[key] !== priorBumpers[key]) {
+                            results += key + " x " + value + " | ";
+                            hasNewBumps = true;
+                        }
+                    }
+                    results = results.slice(0, -2);
+                    results += "\n";
+                    processedApplicantsStr = "";
+                    unprocessedApplicantsStr = "";
+                    for (_c = 0, _d = Object.entries(applicants); _c < _d.length; _c++) {
+                        _e = _d[_c], key = _e[0], value = _e[1];
+                        if (!priorApplicants[key] ||
+                            priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
+                            if (value.hasBeenReviewed) {
+                                processedApplicantsStr += key + "\n";
                             }
                             else {
-                                message.channel.send("Nothing new!");
+                                unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
                             }
-                            priorBumpers = exports.deepCopy(bumpers);
-                            priorApplicants = exports.deepCopy(applicants);
-                            bumpers = {};
-                            applicants = {};
-                            hasNewApplicantResults = false;
-                            hasNewBumps = false;
-                            results = "";
-                            return forumResults;
-                        })];
+                            hasNewApplicantResults = true;
+                        }
+                        else if (!applicants[key]) {
+                            results += key + " still needs to be reviewed\n";
+                            hasNewApplicantResults = true;
+                        }
+                    }
+                    if (hasNewApplicantResults) {
+                        if (processedApplicantsStr.length > 0) {
+                            results += "**Processed Applicants:**\n";
+                            results += processedApplicantsStr;
+                        }
+                        if (unprocessedApplicantsStr.length > 0) {
+                            results += "**Unprocessed Applicants:**\n";
+                            results += unprocessedApplicantsStr;
+                        }
+                    }
+                    if (hasNewApplicantResults || hasNewBumps || debug) {
+                        message.channel.send(results);
+                    }
+                    else {
+                        message.channel.send("Nothing new!");
+                    }
+                    priorBumpers = exports.deepCopy(bumpers);
+                    priorApplicants = exports.deepCopy(applicants);
+                    bumpers = {};
+                    applicants = {};
+                    results = "";
+                    return [2 /*return*/, forumResults];
             }
         });
     });
@@ -252,15 +242,22 @@ client.once("ready", function () {
     }
     client.on("message", function (message) { return __awaiter(void 0, void 0, void 0, function () {
         return __generator(this, function (_a) {
-            if (message.content === "!forums") {
-                message.channel.send("Checking forums now.");
-                checkForums(message, settings_json_1.default);
+            switch (_a.label) {
+                case 0:
+                    if (!(message.content === "!forums")) return [3 /*break*/, 2];
+                    message.channel.send("Checking forums now.");
+                    return [4 /*yield*/, checkForums(message, settings_json_1.default)];
+                case 1:
+                    _a.sent();
+                    return [3 /*break*/, 3];
+                case 2:
+                    if (message.content === "!reset") {
+                        message.channel.send("Resetting data");
+                        reset();
+                    }
+                    _a.label = 3;
+                case 3: return [2 /*return*/];
             }
-            else if (message.content === "!reset") {
-                message.channel.send("Resetting data");
-                reset();
-            }
-            return [2 /*return*/];
         });
     }); });
 });
@@ -340,7 +337,7 @@ exports.deepCopy = function (target) {
         target.forEach(function (v) { cp_1.push(v); });
         return cp_1.map(function (n) { return exports.deepCopy(n); });
     }
-    if (typeof target === 'object' && target !== {}) {
+    if (typeof target === "object" && target !== {}) {
         var cp_2 = __assign({}, target);
         Object.keys(cp_2).forEach(function (k) {
             cp_2[k] = exports.deepCopy(cp_2[k]);

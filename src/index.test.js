@@ -44,6 +44,7 @@ jest.mock("discord.js");
 var fs_1 = require("fs");
 var jest_discordjs_mocks_1 = require("jest-discordjs-mocks");
 var jest_fetch_mock_1 = __importDefault(require("jest-fetch-mock"));
+jest.unmock("./index");
 var index_1 = require("./index");
 var settings_json_1 = __importDefault(require("./settings.json"));
 settings_json_1.default.rejectionString = "you have been accepted";
@@ -54,19 +55,89 @@ for (var i = 1; i < 6; i++) {
     loadedPages.push(d);
 }
 describe("General tests for Hannibal bot", function () {
-    test("Mock test", function () { return __awaiter(void 0, void 0, void 0, function () {
+    test("General purpose parsing", function () { return __awaiter(void 0, void 0, void 0, function () {
         var message, results;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     message = new jest_discordjs_mocks_1.MockMessage();
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
-                    jest_fetch_mock_1.default.mockResponse(loadedPages[0]);
-                    return [4 /*yield*/, index_1.checkForums(message, { acceptanceString: "you have been accepted",
-                            baseUrl: "https://runescape", prefix: "", rejectionString: "your application has been rejected", token: "" })];
+                    // Two of the first one because we call once first to get the page number
+                    jest_fetch_mock_1.default.once(loadedPages[0]).once(loadedPages[0]).once(loadedPages[1]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
-                    console.log(results);
+                    expect(results.bumpers["dingus prime"]).toBe(2);
+                    expect(results.bumpers.birdup).toBe(13);
+                    expect(results.bumpers.ladygodiva).toBe(1);
+                    expect(results.lastPage).toBe(138);
+                    expect(results.currentPage).toBe(139);
+                    expect(results.hasNewApplicantResults).toBe(false);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    test("Special purpose parsing", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    // Two of the first one because we call once first to get the page number
+                    jest_fetch_mock_1.default.once(loadedPages[1]).once(loadedPages[1]).once(loadedPages[2]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expect(results.bumpers["dingus prime"]).toBe(2);
+                    expect(results.bumpers.birdup).toBe(9);
+                    expect(results.bumpers.ladygodiva).toBe(1);
+                    expect(results.lastPage).toBe(138);
+                    expect(results.currentPage).toBe(139);
+                    expect(results.hasNewApplicantResults).toBe(false);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    test("Big posts", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    // Two of the first one because we call once first to get the page number
+                    jest_fetch_mock_1.default.once(loadedPages[2]).once(loadedPages[2]).once(loadedPages[3]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expect(results.bumpers["dingus prime"]).toBeUndefined();
+                    expect(results.bumpers.ladygodiva).toBeUndefined();
+                    expect(results.bumpers.birdup).toBe(12);
+                    expect(results.applicants.THRILLHOUSE.hasBeenReviewed).toBe(true);
+                    expect(results.applicants["Borth Sompson"].hasBeenReviewed).toBe(true);
+                    expect(results.applicants["360noscopepraisehim"].hasBeenReviewed).toBe(true);
+                    expect(results.applicants.Jabroni.hasBeenReviewed).toBe(true);
+                    expect(results.lastPage).toBe(138);
+                    expect(results.currentPage).toBe(139);
+                    expect(results.hasNewApplicantResults).toBe(false);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    test("Nested quotes does should be recognized as bumps", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    jest_fetch_mock_1.default.mockResponse(loadedPages[4]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expect(results.applicants.Jabroni).toBeUndefined();
+                    expect(results.bumpers.Jabroni).toBe(2);
                     return [2 /*return*/];
             }
         });

@@ -1,7 +1,7 @@
 import cheerio from "cheerio";
 import * as Discord from "discord.js";
 import {Message} from "discord.js";
-const fetch = require('node-fetch');
+import fetch from "node-fetch";
 import userSettings from "./settings.json";
 
 const client = new Discord.Client();
@@ -34,7 +34,6 @@ export async function  checkForums(message: Message, settings: ISettings): Promi
     let applicants: {[poster: string]: IApplicant} = {};
     let hasNewBumps: boolean = false;
     let hasNewApplicantResults: boolean = false;
-    const promises: Array<Promise<string | void>> = new Array <Promise<string | void>>();
     // True if the user has a corresponding accept/reject
     await fetch(settings.baseUrl).then((res: any) => res.text()).then(async (pageNumData: any) => {
         const data = pageNumData;
@@ -43,8 +42,7 @@ export async function  checkForums(message: Message, settings: ISettings): Promi
         currentPage = lastPage - 1;
         for (currentPage; currentPage <= lastPage; currentPage++) {
             const url = settings.baseUrl + ",goto," + currentPage;
-            const p: Promise<string | void > =
-              await fetch(settings.baseUrl).then((res: any) => res.text()).then((d: any) => { // Scope: Page
+            await fetch(url).then((res: any) => res.text()).then((d: any) => { // Scope: Page
                   $ = cheerio.load(d);
                   // tslint:disable-next-line:radix
                   $("article.forum-post").map((index: number, element: CheerioElement) => {
@@ -66,7 +64,7 @@ export async function  checkForums(message: Message, settings: ISettings): Promi
                       // @ts-ignore
                       if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
                           applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
-                      } else if(purpose === postPurpose.Bump) {
+                      } else if (purpose === postPurpose.Bump) {
                           if (bumpers[userName]) {
                               bumpers[userName]++;
                           } else {
@@ -84,40 +82,38 @@ export async function  checkForums(message: Message, settings: ISettings): Promi
                   });
 
               });
-            if (p) { promises.push(p); }
         }
     });
-    return Promise.all(promises).then((promise) => {
-        const forumResults: ICheckForumsResults = {applicants, bumpers, currentPage, hasNewApplicantResults,
+    const forumResults: ICheckForumsResults = {applicants, bumpers, currentPage, hasNewApplicantResults,
             hasNewBumps, lastPage};
-        results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
-        results += "Bumps: ";
-        for (const [key, value] of Object.entries(bumpers)) {
+    results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
+    results += "Bumps: ";
+    for (const [key, value] of Object.entries(bumpers)) {
             if (bumpers[key] !== priorBumpers[key]) {
                 results += key + " x " + value + " | ";
                 hasNewBumps = true;
             }
         }
-        results = results.slice(0, -2);
-        results += "\n";
+    results = results.slice(0, -2);
+    results += "\n";
 
-        let processedApplicantsStr = "";
-        let unprocessedApplicantsStr = "";
-        for (const [key, value] of Object.entries(applicants)) {
-            if (!priorApplicants[key] ||
-              priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
-                if (value.hasBeenReviewed) {
-                    processedApplicantsStr +=  key + "\n";
-                } else {
-                    unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
-                }
-                hasNewApplicantResults = true;
-            } else if (!applicants[key]) {
-                results += key + " still needs to be reviewed\n";
-                hasNewApplicantResults = true;
+    let processedApplicantsStr = "";
+    let unprocessedApplicantsStr = "";
+    for (const [key, value] of Object.entries(applicants)) {
+        if (!priorApplicants[key] ||
+          priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
+            if (value.hasBeenReviewed) {
+                processedApplicantsStr +=  key + "\n";
+            } else {
+                unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
             }
+            hasNewApplicantResults = true;
+        } else if (!applicants[key]) {
+            results += key + " still needs to be reviewed\n";
+            hasNewApplicantResults = true;
         }
-        if (hasNewApplicantResults) {
+    }
+    if (hasNewApplicantResults) {
             if (processedApplicantsStr.length > 0) {
                 results += "**Processed Applicants:**\n";
                 results += processedApplicantsStr;
@@ -127,22 +123,17 @@ export async function  checkForums(message: Message, settings: ISettings): Promi
                 results += unprocessedApplicantsStr;
             }
         }
-        if (hasNewApplicantResults || hasNewBumps || debug) {
-            hasNewApplicantResults = false;
-            hasNewBumps = false;
+    if (hasNewApplicantResults || hasNewBumps || debug) {
             message.channel.send(results);
         } else {
             message.channel.send("Nothing new!");
         }
-        priorBumpers = deepCopy(bumpers);
-        priorApplicants = deepCopy(applicants);
-        bumpers = {};
-        applicants = {};
-        hasNewApplicantResults = false;
-        hasNewBumps = false;
-        results = "";
-        return forumResults;
-    });
+    priorBumpers = deepCopy(bumpers);
+    priorApplicants = deepCopy(applicants);
+    bumpers = {};
+    applicants = {};
+    results = "";
+    return forumResults;
 }
 
 client.once("ready", () => {
@@ -153,11 +144,10 @@ client.once("ready", () => {
         results = "";
     }
 
-
     client.on("message", async (message) => {
         if (message.content === "!forums") {
             message.channel.send("Checking forums now.");
-            checkForums(message, userSettings);
+            await checkForums(message, userSettings);
         } else if (message.content === "!reset") {
             message.channel.send("Resetting data");
             reset();
@@ -249,9 +239,9 @@ export const deepCopy = <T>(target: T): T => {
         (target as any[]).forEach((v) => { cp.push(v); });
         return cp.map((n: any) => deepCopy<any>(n)) as any;
     }
-    if (typeof target === 'object' && target !== {}) {
+    if (typeof target === "object" && target !== {}) {
         const cp = { ...(target as { [key: string]: any }) } as { [key: string]: any };
-        Object.keys(cp).forEach(k => {
+        Object.keys(cp).forEach((k) => {
             cp[k] = deepCopy<any>(cp[k]);
         });
         return cp as T;
