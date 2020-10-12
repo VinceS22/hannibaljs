@@ -50,11 +50,11 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 settings_json_1.default.rejectionString = "you have been accepted";
 settings_json_1.default.acceptanceString = "your application has been rejected";
 var loadedPages = [];
-for (var i = 1; i < 6; i++) {
+for (var i = 1; i < 7; i++) {
     var d = fs_1.readFileSync("./mocks/" + i + ".html").toString();
     loadedPages.push(d);
 }
-describe("General tests for Hannibal bot", function () {
+describe("Parsing tests for Hannibal bot", function () {
     test("General purpose parsing", function () { return __awaiter(void 0, void 0, void 0, function () {
         var message, results;
         return __generator(this, function (_a) {
@@ -138,6 +138,79 @@ describe("General tests for Hannibal bot", function () {
                     results = _a.sent();
                     expect(results.applicants.Jabroni).toBeUndefined();
                     expect(results.bumpers.Jabroni).toBe(2);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    test("Special formatting in Username portion should not cause the results to break.", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    jest_fetch_mock_1.default.mockResponse(loadedPages[5]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expect(results.applicants.formatfanatic).toBeDefined();
+                    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(false);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    test("process should properly resolve all applicants to reviewed", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    jest_fetch_mock_1.default.mockResponse(loadedPages[5]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expect(results.applicants.formatfanatic).toBeDefined();
+                    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(false);
+                    results.applicants = index_1.resolveAllApplicants(results.applicants);
+                    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(true);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    test("If the mod has styled the name of the applicant, we shall strip the formatting.", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    jest_fetch_mock_1.default.mockResponse(loadedPages[5]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expect(results.applicants.gregthegreenguy).toBeDefined();
+                    expect(results.applicants.gregthegreenguy.hasBeenReviewed).toBe(true);
+                    results.applicants = index_1.resolveAllApplicants(results.applicants);
+                    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(true);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    test("Should properly generate a bump report", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results, expectedReportResults;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    // Two of the first one because we call once first to get the page number
+                    jest_fetch_mock_1.default.once(loadedPages[1]).once(loadedPages[1]).once(loadedPages[2]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expectedReportResults = "Bumpers as of {dateEstablished}: birdup, dingus prime, ladygodiva";
+                    expect(index_1.generateBumpReport(results.bumpers, "{dateEstablished}")).toBe(expectedReportResults);
                     return [2 /*return*/];
             }
         });
