@@ -69,7 +69,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deepCopy = exports.renderElement = exports.checkForums = void 0;
+exports.deepCopy = exports.renderElement = exports.resolveAllApplicants = exports.checkForums = exports.generateBumpReport = void 0;
 var cheerio_1 = __importDefault(require("cheerio"));
 var Discord = __importStar(require("discord.js"));
 var node_fetch_1 = __importDefault(require("node-fetch"));
@@ -79,6 +79,72 @@ var results = "";
 var debug = false;
 var priorBumpers = {};
 var priorApplicants = {};
+var dateSinceLastReset = new Date();
+client.once("ready", function () {
+    var helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
+        "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bumper report date as well" +
+        "\n!bump : Returns a list of all unique people who bumped. Will be reset with !reset " +
+        "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application";
+    function reset() {
+        priorApplicants = {};
+        priorBumpers = {};
+        results = "";
+        dateSinceLastReset = new Date();
+    }
+    client.on("message", function (message) { return __awaiter(void 0, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!(message.content === "!forums")) return [3 /*break*/, 2];
+                    message.channel.send("Checking forums now.");
+                    return [4 /*yield*/, checkForums(message, settings_json_1.default)];
+                case 1:
+                    _a.sent();
+                    return [3 /*break*/, 3];
+                case 2:
+                    if (message.content === "!reset") {
+                        message.channel.send("Resetting data");
+                        reset();
+                    }
+                    else if (message.content === "!process") {
+                        priorApplicants = resolveAllApplicants(priorApplicants);
+                        message.channel.send("All applicants are processed");
+                    }
+                    else if (message.content === "!bump") {
+                        message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()));
+                    }
+                    else if (message.content === "!help") {
+                        message.channel.send(helpMessage);
+                    }
+                    _a.label = 3;
+                case 3: return [2 /*return*/];
+            }
+        });
+    }); });
+});
+client.login(settings_json_1.default.token);
+function generateBumpReport(bumpers, date) {
+    var bumperNames = [];
+    var bumperString = "";
+    var returnValue = "";
+    for (var _i = 0, _a = Object.entries(bumpers); _i < _a.length; _i++) {
+        var _b = _a[_i], key = _b[0], value = _b[1];
+        bumperNames.push(key);
+    }
+    if (bumperNames.length === 0) {
+        returnValue = "No bumpers found";
+    }
+    else {
+        bumperNames.sort();
+        bumperNames.forEach(function (name) {
+            bumperString += name + ", ";
+        });
+        returnValue = "Bumpers as of " + date + ": " + bumperString;
+        returnValue = returnValue.substring(0, returnValue.length - 2); // Probably a better way, but I'm lazy. :(
+    }
+    return returnValue;
+}
+exports.generateBumpReport = generateBumpReport;
 function checkForums(message, settings) {
     return __awaiter(this, void 0, void 0, function () {
         var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, forumResults, _i, _a, _b, key, value, processedApplicantsStr, unprocessedApplicantsStr, _c, _d, _e, key, value;
@@ -141,6 +207,9 @@ function checkForums(message, settings) {
                                                                         }
                                                                     }
                                                                     else if (purpose === postPurpose.Application) {
+                                                                        if (appUsername.length === 0) {
+                                                                            appUsername = userName;
+                                                                        }
                                                                         if (!applicants[appUsername]) {
                                                                             applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
                                                                         }
@@ -234,34 +303,14 @@ function checkForums(message, settings) {
     });
 }
 exports.checkForums = checkForums;
-client.once("ready", function () {
-    function reset() {
-        priorApplicants = {};
-        priorBumpers = {};
-        results = "";
+function resolveAllApplicants(orig) {
+    for (var _i = 0, _a = Object.entries(orig); _i < _a.length; _i++) {
+        var _b = _a[_i], key = _b[0], value = _b[1];
+        orig[key].hasBeenReviewed = true;
     }
-    client.on("message", function (message) { return __awaiter(void 0, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    if (!(message.content === "!forums")) return [3 /*break*/, 2];
-                    message.channel.send("Checking forums now.");
-                    return [4 /*yield*/, checkForums(message, settings_json_1.default)];
-                case 1:
-                    _a.sent();
-                    return [3 /*break*/, 3];
-                case 2:
-                    if (message.content === "!reset") {
-                        message.channel.send("Resetting data");
-                        reset();
-                    }
-                    _a.label = 3;
-                case 3: return [2 /*return*/];
-            }
-        });
-    }); });
-});
-client.login(settings_json_1.default.token);
+    return orig;
+}
+exports.resolveAllApplicants = resolveAllApplicants;
 var postPurpose;
 (function (postPurpose) {
     postPurpose["Bump"] = "Bump";
@@ -271,6 +320,7 @@ var postPurpose;
 })(postPurpose || (postPurpose = {}));
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
 exports.renderElement = function (elem, settings) {
+    var _a;
     var postText = "";
     var purpose = postPurpose.Bump;
     var appUsername = "";
@@ -280,6 +330,9 @@ exports.renderElement = function (elem, settings) {
             appUsername = elem.data.split(":")[1].trim();
             if (appUsername.length > 0) {
                 purpose = postPurpose.Application;
+            }
+            else {
+                appUsername = (_a = elem.nextSibling.children[0].data) !== null && _a !== void 0 ? _a : "";
             }
         }
         else if (elem.data.includes(settings.acceptanceString)) {

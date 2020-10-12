@@ -8,8 +8,10 @@ const client = new Discord.Client();
 let results = "";
 
 const debug = false;
+
 let priorBumpers: {[poster: string]: number} = {};
 let priorApplicants: {[poster: string]: IApplicant} = {};
+let dateSinceLastReset: Date = new Date();
 
 export interface ISettings {
     prefix: string;
@@ -27,7 +29,60 @@ export interface ICheckForumsResults {
     hasNewBumps: boolean;
     hasNewApplicantResults: boolean;
 }
-export async function  checkForums(message: Message, settings: ISettings): Promise<ICheckForumsResults> {
+client.once("ready", () => {
+    const helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
+      "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bumper report date as well" +
+      "\n!bump : Returns a list of all unique people who bumped. Will be reset with !reset " +
+      "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application"
+    function reset() {
+        priorApplicants = {};
+        priorBumpers = {};
+        results = "";
+        dateSinceLastReset = new Date();
+    }
+
+    client.on("message", async (message) => {
+        if (message.content === "!forums") {
+            message.channel.send("Checking forums now.");
+            await checkForums(message, userSettings);
+        } else if (message.content === "!reset") {
+            message.channel.send("Resetting data");
+            reset();
+        } else if (message.content === "!process") {
+            priorApplicants = resolveAllApplicants(priorApplicants);
+            message.channel.send("All applicants are processed");
+        } else if (message.content === "!bump") {
+            message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()));
+        } else if (message.content === "!help") {
+            message.channel.send(helpMessage);
+        }
+    });
+});
+
+client.login(userSettings.token);
+
+export function generateBumpReport(bumpers: ICheckForumsResults["bumpers"], date: string) {
+    const bumperNames = [];
+    let bumperString = "";
+    let returnValue = "";
+    for (const [key, value] of Object.entries(bumpers)) {
+        bumperNames.push(key);
+    }
+
+    if (bumperNames.length === 0) {
+        returnValue = "No bumpers found";
+    } else {
+        bumperNames.sort();
+        bumperNames.forEach((name: string)=>{
+            bumperString += name + ", ";
+        });
+        returnValue = "Bumpers as of " + date + ": " + bumperString;
+        returnValue = returnValue.substring(0, returnValue.length - 2); // Probably a better way, but I'm lazy. :(
+    }
+    return returnValue;
+}
+
+export async function checkForums(message: Message, settings: ISettings): Promise<ICheckForumsResults> {
     let currentPage = -1;
     let lastPage = -1;
     let bumpers: {[poster: string]: number} = {};
@@ -71,6 +126,9 @@ export async function  checkForums(message: Message, settings: ISettings): Promi
                               bumpers[userName] = 1;
                           }
                       } else if (purpose === postPurpose.Application) {
+                          if (appUsername.length === 0) {
+                              appUsername = userName;
+                          }
                           if (!applicants[appUsername]) {
                               applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
                           }
@@ -136,26 +194,12 @@ export async function  checkForums(message: Message, settings: ISettings): Promi
     return forumResults;
 }
 
-client.once("ready", () => {
-
-    function reset() {
-        priorApplicants = {};
-        priorBumpers = {};
-        results = "";
+export function resolveAllApplicants(orig: ICheckForumsResults["applicants"]): ICheckForumsResults["applicants"] {
+    for (const [key, value] of Object.entries(orig)) {
+        orig[key].hasBeenReviewed = true;
     }
-
-    client.on("message", async (message) => {
-        if (message.content === "!forums") {
-            message.channel.send("Checking forums now.");
-            await checkForums(message, userSettings);
-        } else if (message.content === "!reset") {
-            message.channel.send("Resetting data");
-            reset();
-        }
-    });
-});
-
-client.login(userSettings.token);
+    return orig;
+}
 
 enum postPurpose {
     Bump= "Bump",
@@ -186,6 +230,9 @@ export const renderElement = (elem: CheerioElement, settings: ISettings): IPostR
             appUsername = elem.data.split(":")[1].trim();
             if (appUsername.length > 0) {
                 purpose = postPurpose.Application;
+            } else {
+                appUsername = elem.nextSibling.children[0].data
+                  ?? "";
             }
         } else if (elem.data.includes(settings.acceptanceString)) {
             purpose = postPurpose.Acceptance;
