@@ -3,6 +3,11 @@
     "extends": [
         "tslint:recommended"
     ],
+    "indent": [
+        true,
+        "spaces",
+        2
+    ],
     "jsRules": {},
     "rules": {},
     "rulesDirectory": []
