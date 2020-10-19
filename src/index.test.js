@@ -216,3 +216,15 @@ describe("Parsing tests for Hannibal bot", function () {
         });
     }); });
 });
+describe("Discord role command tests", function () {
+    test("We are able to fetch the audit logs and see how long a user has had a role for", function () {
+    });
+    test("When a 1 bar has been a 1 bar for a month, return as a result", function () {
+        expect(index_1.get1bars(new jest_discordjs_mocks_1.MockMessage())[0]).toBe(["test1", "1/1/2020"]);
+    });
+    test("When a 2 bar has been a 2 bar for a month, return as a result", function () {
+        expect(index_1.get2bars()[0]).toBe(["test1", "1/1/2020"]);
+    });
+    test("", function () {
+    });
+});

@@ -4,10 +4,8 @@ jest.mock("discord.js");
 import {readFileSync} from "fs";
 import {MockMessage, MockTextChannel} from "jest-discordjs-mocks";
 import fetch from "jest-fetch-mock";
-import { mocked } from "ts-jest/utils";
-import * as ind from "./index";
 jest.unmock("./index");
-import {checkForums, generateBumpReport, resolveAllApplicants} from "./index";
+import {checkForums, generateBumpReport, resolveAllApplicants,get1bars,get2bars} from "./index";
 import settings from "./settings.json";
 settings.rejectionString = "you have been accepted";
 settings.acceptanceString = "your application has been rejected";
@@ -16,8 +14,6 @@ for (let i = 1; i < 7; i++) {
   const d = readFileSync("./mocks/" + i + ".html").toString();
   loadedPages.push(d);
 }
-
-
 
 describe("Parsing tests for Hannibal bot", () => {
 
@@ -112,6 +108,22 @@ describe("Parsing tests for Hannibal bot", () => {
     const results = await checkForums(message, settings);
     const expectedReportResults = "Bumpers as of {dateEstablished}: birdup, dingus prime, ladygodiva";
     expect(generateBumpReport(results.bumpers, "{dateEstablished}")).toBe(expectedReportResults);
+  });
+
+});
+
+describe("Discord role command tests", () => {
+  test("We are able to fetch the audit logs and see how long a user has had a role for", () => {
+
+  });
+  test("When a 1 bar has been a 1 bar for a month, return as a result", () => {
+    //expect(get1bars(new MockMessage())[0]).toBe(["test1", "1/1/2020"]);
+  });
+  test("When a 2 bar has been a 2 bar for a month, return as a result",() => {
+    expect(get2bars()[0]).toBe(["test1", "1/1/2020"]);
+  });
+  test("",() => {
+
   });
 
 });

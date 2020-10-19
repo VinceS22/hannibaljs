@@ -69,7 +69,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deepCopy = exports.renderElement = exports.resolveAllApplicants = exports.checkForums = exports.generateBumpReport = void 0;
+exports.deepCopy = exports.renderElement = exports.resolveAllApplicants = exports.checkForums = exports.get2bars = exports.get1bars = exports.generateBumpReport = void 0;
 var cheerio_1 = __importDefault(require("cheerio"));
 var Discord = __importStar(require("discord.js"));
 var node_fetch_1 = __importDefault(require("node-fetch"));
@@ -116,6 +116,9 @@ client.once("ready", function () {
                     else if (message.content === "!help") {
                         message.channel.send(helpMessage);
                     }
+                    else if (message.content === "a") {
+                        get1bars(message);
+                    }
                     _a.label = 3;
                 case 3: return [2 /*return*/];
             }
@@ -145,6 +148,25 @@ function generateBumpReport(bumpers, date) {
     return returnValue;
 }
 exports.generateBumpReport = generateBumpReport;
+function get1bars(message) {
+    var roles = [];
+    if (!message || !message.guild) {
+        throw new Error("falsy message");
+    }
+    for (var rolesKey in message.guild.roles) {
+        message.guild.roles.fetch(rolesKey).then(function (role) {
+            roles.push(role);
+            console.log("role: " + (role === null || role === void 0 ? void 0 : role.toString()));
+        });
+    }
+    console.log(message && message.guild && message.guild.roles);
+    return [];
+}
+exports.get1bars = get1bars;
+function get2bars() {
+    return [];
+}
+exports.get2bars = get2bars;
 function checkForums(message, settings) {
     return __awaiter(this, void 0, void 0, function () {
         var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, forumResults, _i, _a, _b, key, value, processedApplicantsStr, unprocessedApplicantsStr, _c, _d, _e, key, value;

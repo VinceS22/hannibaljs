@@ -1,10 +1,9 @@
 import cheerio from "cheerio";
-import * as Discord from "discord.js";
-import {Message} from "discord.js";
+import {Client, Message} from "discord.js";
 import fetch from "node-fetch";
 import userSettings from "./settings.json";
 
-const client = new Discord.Client();
+const client = new Client();
 let results = "";
 
 const debug = false;
@@ -33,7 +32,7 @@ client.once("ready", () => {
     const helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
       "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bumper report date as well" +
       "\n!bump : Returns a list of all unique people who bumped. Will be reset with !reset " +
-      "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application"
+      "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application";
     function reset() {
         priorApplicants = {};
         priorBumpers = {};
@@ -55,6 +54,10 @@ client.once("ready", () => {
             message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()));
         } else if (message.content === "!help") {
             message.channel.send(helpMessage);
+        } else if(message.content ==="a") {
+            const roleID = "767535754393026580"
+            let membersWithRole = message.guild?.roles.cache.get(roleID)?.members?.entries;
+            get1bars(message);
         }
     });
 });
@@ -73,13 +76,37 @@ export function generateBumpReport(bumpers: ICheckForumsResults["bumpers"], date
         returnValue = "No bumpers found";
     } else {
         bumperNames.sort();
-        bumperNames.forEach((name: string)=>{
+        bumperNames.forEach((name: string) => {
             bumperString += name + ", ";
         });
         returnValue = "Bumpers as of " + date + ": " + bumperString;
         returnValue = returnValue.substring(0, returnValue.length - 2); // Probably a better way, but I'm lazy. :(
     }
     return returnValue;
+}
+
+export async function get1bars(message: Message): Promise<[[string, Date]?]> {
+    const oneBars = [];
+    if (!message || !message.guild || message.guild.roles.cache) {
+        throw new Error("falsy message");
+    }
+    let roleID = "767535754393026580";
+    let membersWithRole = [[]]// message.guild?.roles.cache.get(roleID);
+
+
+    // for (let rolesKey in message.guild.roles.fetch('Recruit')) {
+    //     message.guild.roles.fetch(rolesKey).then((role)=>{
+    //         roles.push(role);
+    //         console.log("role: " + role?.toString())
+    //     })
+    // }
+    // console.log(message && message.guild && message.guild.roles);
+    
+    return new Promise(()=>{return membersWithRole});
+}
+
+export function get2bars(): [[string, Date]?] {
+    return [];
 }
 
 export async function checkForums(message: Message, settings: ISettings): Promise<ICheckForumsResults> {
