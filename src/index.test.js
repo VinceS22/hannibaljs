@@ -50,7 +50,7 @@ var settings_json_1 = __importDefault(require("./settings.json"));
 settings_json_1.default.rejectionString = "you have been accepted";
 settings_json_1.default.acceptanceString = "your application has been rejected";
 var loadedPages = [];
-for (var i = 1; i < 7; i++) {
+for (var i = 1; i < 8; i++) {
     var d = fs_1.readFileSync("./mocks/" + i + ".html").toString();
     loadedPages.push(d);
 }
@@ -197,6 +197,23 @@ describe("Parsing tests for Hannibal bot", function () {
             }
         });
     }); });
+    test("If the mod has styled the name of the applicant with br tags, we shall strip the brs.", function () { return __awaiter(void 0, void 0, void 0, function () {
+        var message, results;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    message = new jest_discordjs_mocks_1.MockMessage();
+                    message.channel = new jest_discordjs_mocks_1.MockTextChannel();
+                    jest_fetch_mock_1.default.mockResponse(loadedPages[6]);
+                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                case 1:
+                    results = _a.sent();
+                    expect(results.applicants.Dredd).toBeDefined();
+                    expect(results.applicants.Dredd.hasBeenReviewed).toBe(true);
+                    return [2 /*return*/];
+            }
+        });
+    }); });
     test("Should properly generate a bump report", function () { return __awaiter(void 0, void 0, void 0, function () {
         var message, results, expectedReportResults;
         return __generator(this, function (_a) {
@@ -216,3 +233,4 @@ describe("Parsing tests for Hannibal bot", function () {
         });
     }); });
 });
+//# sourceMappingURL=index.test.js.map
