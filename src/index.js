@@ -321,7 +321,7 @@ var postPurpose;
 })(postPurpose || (postPurpose = {}));
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
 exports.renderElement = function (elem, settings) {
-    var _a, _b;
+    var _a, _b, _c;
     var postText = "";
     var purpose = postPurpose.Bump;
     var appUsername = "";
@@ -333,12 +333,16 @@ exports.renderElement = function (elem, settings) {
                 purpose = postPurpose.Application;
             }
             else {
-                if (elem.nextSibling.type === "br") {
-                    while (elem.nextSibling && elem.nextSibling.type === "br") {
+                appUsername = (_b = (_a = elem.nextSibling.children[0]) === null || _a === void 0 ? void 0 : _a.data) !== null && _b !== void 0 ? _b : "";
+                if (appUsername.length === 0) {
+                    if (elem.nextSibling.name === "br") {
+                        while (elem.nextSibling && elem.nextSibling.name === "br") {
+                            elem = elem.nextSibling;
+                        }
                         elem = elem.nextSibling;
                     }
+                    appUsername = (_c = elem.data) !== null && _c !== void 0 ? _c : "";
                 }
-                appUsername = (_b = (_a = elem.nextSibling.children[0]) === null || _a === void 0 ? void 0 : _a.data) !== null && _b !== void 0 ? _b : "";
             }
         }
         else if (elem.data.includes(settings.acceptanceString)) {
@@ -405,3 +409,4 @@ exports.deepCopy = function (target) {
     }
     return target;
 };
+//# sourceMappingURL=index.js.map
