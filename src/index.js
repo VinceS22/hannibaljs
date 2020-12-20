@@ -194,8 +194,9 @@ function checkForums(message, settings) {
                                                                             appUsername = renderedElement.appUsername;
                                                                         }
                                                                     });
-                                                                    // @ts-ignore
-                                                                    if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                                                                    if (appUsername.length > 0 &&
+                                                                        // @ts-ignore
+                                                                        (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection)) {
                                                                         applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
                                                                     }
                                                                     else if (purpose === postPurpose.Bump) {
@@ -320,7 +321,7 @@ var postPurpose;
 })(postPurpose || (postPurpose = {}));
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
 exports.renderElement = function (elem, settings) {
-    var _a;
+    var _a, _b;
     var postText = "";
     var purpose = postPurpose.Bump;
     var appUsername = "";
@@ -332,7 +333,12 @@ exports.renderElement = function (elem, settings) {
                 purpose = postPurpose.Application;
             }
             else {
-                appUsername = (_a = elem.nextSibling.children[0].data) !== null && _a !== void 0 ? _a : "";
+                if (elem.nextSibling.type === "br") {
+                    while (elem.nextSibling && elem.nextSibling.type === "br") {
+                        elem = elem.nextSibling;
+                    }
+                }
+                appUsername = (_b = (_a = elem.nextSibling.children[0]) === null || _a === void 0 ? void 0 : _a.data) !== null && _b !== void 0 ? _b : "";
             }
         }
         else if (elem.data.includes(settings.acceptanceString)) {
