@@ -245,7 +245,7 @@ export const renderElement = (elem: CheerioElement, settings: ISettings): IPostR
                 }
             }
         } else if (elem.data.includes(settings.acceptanceString)) {
-            purpose = postPurpose.Acceptance;\
+            purpose = postPurpose.Acceptance;
         } else if (elem.data.includes(settings.rejectionString)) {
             purpose = postPurpose.Rejection;
         } else if (elem.data.includes("is your favorite thing to do in-")) {
