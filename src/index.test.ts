@@ -12,7 +12,7 @@ import settings from "./settings.json";
 settings.rejectionString = "you have been accepted";
 settings.acceptanceString = "your application has been rejected";
 const loadedPages: string[] = [];
-for (let i = 1; i < 7; i++) {
+for (let i = 1; i < 8; i++) {
   const d = readFileSync("./mocks/" + i + ".html").toString();
   loadedPages.push(d);
 }
@@ -104,6 +104,16 @@ describe("Parsing tests for Hannibal bot", () => {
     expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(true);
   });
 
+  test("If the mod has styled the name of the applicant with br tags, we shall strip the brs.", async () => {
+    const message = new MockMessage();
+    message.channel = new MockTextChannel();
+    fetch.mockResponse(loadedPages[6]);
+    const results = await checkForums(message, settings);
+    expect(results.applicants.Dredd).toBeDefined();
+    expect(results.applicants.Dredd.hasBeenReviewed).toBe(true);
+  });
+
+
   test("Should properly generate a bump report", async () => {
     const message = new MockMessage();
     message.channel = new MockTextChannel();
@@ -113,5 +123,7 @@ describe("Parsing tests for Hannibal bot", () => {
     const expectedReportResults = "Bumpers as of {dateEstablished}: birdup, dingus prime, ladygodiva";
     expect(generateBumpReport(results.bumpers, "{dateEstablished}")).toBe(expectedReportResults);
   });
+
+
 
 });

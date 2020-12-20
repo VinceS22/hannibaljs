@@ -232,16 +232,20 @@ export const renderElement = (elem: CheerioElement, settings: ISettings): IPostR
             if (appUsername.length > 0) {
                 purpose = postPurpose.Application;
             } else {
-                if (elem.nextSibling.type === "br")  {
-                    while (elem.nextSibling && elem.nextSibling.type === "br") {
-                        elem = elem.nextSibling;
-                    }
-                }
                 appUsername = elem.nextSibling.children[0]?.data
                   ?? "";
+                if (appUsername.length === 0) {
+                    if (elem.nextSibling.name === "br")  {
+                        while (elem.nextSibling && elem.nextSibling.name === "br") {
+                            elem = elem.nextSibling;
+                        }
+                        elem = elem.nextSibling;
+                    }
+                    appUsername = elem.data ?? "";
+                }
             }
         } else if (elem.data.includes(settings.acceptanceString)) {
-            purpose = postPurpose.Acceptance;
+            purpose = postPurpose.Acceptance;\
         } else if (elem.data.includes(settings.rejectionString)) {
             purpose = postPurpose.Rejection;
         } else if (elem.data.includes("is your favorite thing to do in-")) {
