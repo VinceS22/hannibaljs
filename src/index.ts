@@ -116,8 +116,9 @@ export async function checkForums(message: Message, settings: ISettings): Promis
                               appUsername = renderedElement.appUsername;
                           }
                       });
-                      // @ts-ignore
-                      if (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection) {
+                      if (appUsername.length > 0 &&
+                        // @ts-ignore
+                        (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection)) {
                           applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
                       } else if (purpose === postPurpose.Bump) {
                           if (bumpers[userName]) {
@@ -231,7 +232,12 @@ export const renderElement = (elem: CheerioElement, settings: ISettings): IPostR
             if (appUsername.length > 0) {
                 purpose = postPurpose.Application;
             } else {
-                appUsername = elem.nextSibling.children[0].data
+                if (elem.nextSibling.type === "br")  {
+                    while (elem.nextSibling && elem.nextSibling.type === "br") {
+                        elem = elem.nextSibling;
+                    }
+                }
+                appUsername = elem.nextSibling.children[0]?.data
                   ?? "";
             }
         } else if (elem.data.includes(settings.acceptanceString)) {
