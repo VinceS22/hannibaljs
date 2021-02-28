@@ -31,9 +31,9 @@ export interface ICheckForumsResults {
 }
 client.once("ready", () => {
     const helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
-      "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bumper report date as well" +
+      "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bump report date as well" +
       "\n!bump : Returns a list of all unique people who bumped. Will be reset with !reset " +
-      "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application"
+      "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application";
     function reset() {
         priorApplicants = {};
         priorBumpers = {};
@@ -73,7 +73,7 @@ export function generateBumpReport(bumpers: ICheckForumsResults["bumpers"], date
         returnValue = "No bumpers found";
     } else {
         bumperNames.sort();
-        bumperNames.forEach((name: string)=>{
+        bumperNames.forEach((name: string) => {
             bumperString += name + ", ";
         });
         returnValue = "Bumpers as of " + date + ": " + bumperString;
@@ -159,6 +159,9 @@ export async function checkForums(message: Message, settings: ISettings): Promis
     let processedApplicantsStr = "";
     let unprocessedApplicantsStr = "";
     for (const [key, value] of Object.entries(applicants)) {
+        if(priorApplicants[key]?.hasBeenReviewed && !applicants[key]?.hasBeenReviewed) {
+            applicants[key].hasBeenReviewed = true;
+        }
         if (!priorApplicants[key] ||
           priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
             if (value.hasBeenReviewed) {
