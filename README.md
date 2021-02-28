@@ -13,3 +13,6 @@ Afterwards, you should have everything set up! Now run the following in the root
 npm install
 npm run start
 ````
+
+# How to test
+Unzip the mocks.zip file to the mocks folder. It should just be html files in there.
