@@ -173,7 +173,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     expect(results.applicants.formatfanatic).toBeDefined();
                     expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(false);
                     results.applicants = index_1.resolveAllApplicants(results.applicants);
-                    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(true);
+                    expect(results.applicants.formatfanatic.manuallyProcessed).toBe(true);
                     return [2 /*return*/];
             }
         });
@@ -191,8 +191,6 @@ describe("Parsing tests for Hannibal bot", function () {
                     results = _a.sent();
                     expect(results.applicants.gregthegreenguy).toBeDefined();
                     expect(results.applicants.gregthegreenguy.hasBeenReviewed).toBe(true);
-                    results.applicants = index_1.resolveAllApplicants(results.applicants);
-                    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(true);
                     return [2 /*return*/];
             }
         });

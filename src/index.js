@@ -148,7 +148,7 @@ exports.generateBumpReport = generateBumpReport;
 function checkForums(message, settings) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
-        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, forumResults, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, _e, _f, _g, key, value;
+        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, forumResults, addedBumpsStr, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, stillNeedsReviewing, _e, _f, _g, key, value;
         var _this = this;
         return __generator(this, function (_h) {
             switch (_h.label) {
@@ -198,7 +198,8 @@ function checkForums(message, settings) {
                                                                     if (appUsername.length > 0 &&
                                                                         // @ts-ignore
                                                                         (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection)) {
-                                                                        applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true };
+                                                                        applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: true,
+                                                                            manuallyProcessed: false };
                                                                     }
                                                                     else if (purpose === postPurpose.Bump) {
                                                                         if (bumpers[userName]) {
@@ -213,7 +214,8 @@ function checkForums(message, settings) {
                                                                             appUsername = userName;
                                                                         }
                                                                         if (!applicants[appUsername]) {
-                                                                            applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false };
+                                                                            applicants[appUsername] = { url: url, username: appUsername, hasBeenReviewed: false,
+                                                                                manuallyProcessed: false };
                                                                         }
                                                                     }
                                                                     if (debug) {
@@ -249,10 +251,14 @@ function checkForums(message, settings) {
                     forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults,
                         hasNewBumps: hasNewBumps, lastPage: lastPage };
                     results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
-                    results += "Bumps: ";
+                    addedBumpsStr = false;
                     for (_i = 0, _c = Object.entries(bumpers); _i < _c.length; _i++) {
                         _d = _c[_i], key = _d[0], value = _d[1];
                         if (bumpers[key] !== priorBumpers[key]) {
+                            if (!addedBumpsStr) {
+                                results += "Bumps: ";
+                                addedBumpsStr = true;
+                            }
                             results += key + " x " + value + " | ";
                             hasNewBumps = true;
                         }
@@ -261,14 +267,13 @@ function checkForums(message, settings) {
                     results += "\n";
                     processedApplicantsStr = "";
                     unprocessedApplicantsStr = "";
+                    stillNeedsReviewing = "";
                     for (_e = 0, _f = Object.entries(applicants); _e < _f.length; _e++) {
                         _g = _f[_e], key = _g[0], value = _g[1];
-                        if (((_a = priorApplicants[key]) === null || _a === void 0 ? void 0 : _a.hasBeenReviewed) && !((_b = applicants[key]) === null || _b === void 0 ? void 0 : _b.hasBeenReviewed)) {
-                            applicants[key].hasBeenReviewed = true;
-                        }
                         if (!priorApplicants[key] ||
-                            priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
-                            if (value.hasBeenReviewed) {
+                            priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed ||
+                            debug) {
+                            if (applicants[key].hasBeenReviewed || applicants[key].manuallyProcessed) {
                                 processedApplicantsStr += key + "\n";
                             }
                             else {
@@ -276,19 +281,21 @@ function checkForums(message, settings) {
                             }
                             hasNewApplicantResults = true;
                         }
-                        else if (!applicants[key]) {
-                            results += key + " still needs to be reviewed\n";
+                        else if (!((_a = applicants[key]) === null || _a === void 0 ? void 0 : _a.hasBeenReviewed) && !priorApplicants[key].manuallyProcessed) {
+                            stillNeedsReviewing += key + " still needs to be reviewed - Link: <" + value.url + ">\n";
                             hasNewApplicantResults = true;
                         }
+                        applicants[key].manuallyProcessed = (_b = priorApplicants[key]) === null || _b === void 0 ? void 0 : _b.manuallyProcessed;
                     }
-                    if (hasNewApplicantResults) {
+                    if (hasNewApplicantResults || debug) {
                         if (processedApplicantsStr.length > 0) {
                             results += "**Processed Applicants:**\n";
                             results += processedApplicantsStr;
                         }
-                        if (unprocessedApplicantsStr.length > 0) {
+                        if (unprocessedApplicantsStr.length > 0 || stillNeedsReviewing.length > 0) {
                             results += "**Unprocessed Applicants:**\n";
                             results += unprocessedApplicantsStr;
+                            results += stillNeedsReviewing;
                         }
                     }
                     if (hasNewApplicantResults || hasNewBumps || debug) {
@@ -311,7 +318,7 @@ exports.checkForums = checkForums;
 function resolveAllApplicants(orig) {
     for (var _i = 0, _a = Object.entries(orig); _i < _a.length; _i++) {
         var _b = _a[_i], key = _b[0], value = _b[1];
-        orig[key].hasBeenReviewed = true;
+        orig[key].manuallyProcessed = true;
     }
     return orig;
 }
