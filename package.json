@@ -21,7 +21,8 @@
     "eslint": "^7.7.0",
     "jest-discordjs-mocks": "^1.0.2",
     "node-fetch": "^2.6.1",
-    "read-file": "^0.2.0"
+    "read-file": "^0.2.0",
+    "node-notifier": ">=8.0.1"
   },
   "devDependencies": {
     "@types/jest": "^26.0.14",

@@ -90,7 +90,7 @@ describe("Parsing tests for Hannibal bot", () => {
     expect(results.applicants.formatfanatic).toBeDefined();
     expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(false);
     results.applicants = resolveAllApplicants(results.applicants);
-    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(true);
+    expect(results.applicants.formatfanatic.manuallyProcessed).toBe(true);
   });
 
   test("If the mod has styled the name of the applicant, we shall strip the formatting.", async () => {
@@ -100,8 +100,6 @@ describe("Parsing tests for Hannibal bot", () => {
     const results = await checkForums(message, settings);
     expect(results.applicants.gregthegreenguy).toBeDefined();
     expect(results.applicants.gregthegreenguy.hasBeenReviewed).toBe(true);
-    results.applicants = resolveAllApplicants(results.applicants);
-    expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(true);
   });
 
   test("If the mod has styled the name of the applicant with br tags, we shall strip the brs.", async () => {

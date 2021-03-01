@@ -31,9 +31,9 @@ export interface ICheckForumsResults {
 }
 client.once("ready", () => {
     const helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
-      "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bumper report date as well" +
+      "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bump report date as well" +
       "\n!bump : Returns a list of all unique people who bumped. Will be reset with !reset " +
-      "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application"
+      "\n!process: Will process all applicants as reviewed. Useful for situations we don't actually need to review the application";
     function reset() {
         priorApplicants = {};
         priorBumpers = {};
@@ -73,7 +73,7 @@ export function generateBumpReport(bumpers: ICheckForumsResults["bumpers"], date
         returnValue = "No bumpers found";
     } else {
         bumperNames.sort();
-        bumperNames.forEach((name: string)=>{
+        bumperNames.forEach((name: string) => {
             bumperString += name + ", ";
         });
         returnValue = "Bumpers as of " + date + ": " + bumperString;
@@ -119,7 +119,8 @@ export async function checkForums(message: Message, settings: ISettings): Promis
                       if (appUsername.length > 0 &&
                         // @ts-ignore
                         (purpose === postPurpose.Acceptance || purpose === postPurpose.Rejection)) {
-                          applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true};
+                          applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: true,
+                              manuallyProcessed: false};
                       } else if (purpose === postPurpose.Bump) {
                           if (bumpers[userName]) {
                               bumpers[userName]++;
@@ -131,7 +132,8 @@ export async function checkForums(message: Message, settings: ISettings): Promis
                               appUsername = userName;
                           }
                           if (!applicants[appUsername]) {
-                              applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false};
+                              applicants[appUsername] = {url, username: appUsername, hasBeenReviewed: false,
+                                  manuallyProcessed: false};
                           }
                       }
                       if (debug) {
@@ -146,9 +148,13 @@ export async function checkForums(message: Message, settings: ISettings): Promis
     const forumResults: ICheckForumsResults = {applicants, bumpers, currentPage, hasNewApplicantResults,
             hasNewBumps, lastPage};
     results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
-    results += "Bumps: ";
+    let addedBumpsStr = false;
     for (const [key, value] of Object.entries(bumpers)) {
             if (bumpers[key] !== priorBumpers[key]) {
+                if (!addedBumpsStr) {
+                    results += "Bumps: ";
+                    addedBumpsStr = true;
+                }
                 results += key + " x " + value + " | ";
                 hasNewBumps = true;
             }
@@ -158,28 +164,32 @@ export async function checkForums(message: Message, settings: ISettings): Promis
 
     let processedApplicantsStr = "";
     let unprocessedApplicantsStr = "";
+    let stillNeedsReviewing = "";
     for (const [key, value] of Object.entries(applicants)) {
         if (!priorApplicants[key] ||
-          priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed) {
-            if (value.hasBeenReviewed) {
+          priorApplicants[key].hasBeenReviewed !== applicants[key].hasBeenReviewed ||
+            debug) {
+            if (applicants[key].hasBeenReviewed || applicants[key].manuallyProcessed) {
                 processedApplicantsStr +=  key + "\n";
             } else {
                 unprocessedApplicantsStr += key + " - Link: <" + value.url + ">\n";
             }
             hasNewApplicantResults = true;
-        } else if (!applicants[key]) {
-            results += key + " still needs to be reviewed\n";
+        } else if (!applicants[key]?.hasBeenReviewed && !priorApplicants[key].manuallyProcessed) {
+            stillNeedsReviewing += key + " still needs to be reviewed - Link: <" + value.url + ">\n";
             hasNewApplicantResults = true;
         }
+        applicants[key].manuallyProcessed = priorApplicants[key]?.manuallyProcessed;
     }
-    if (hasNewApplicantResults) {
+    if (hasNewApplicantResults || debug) {
             if (processedApplicantsStr.length > 0) {
                 results += "**Processed Applicants:**\n";
                 results += processedApplicantsStr;
             }
-            if (unprocessedApplicantsStr.length > 0) {
+            if (unprocessedApplicantsStr.length > 0  || stillNeedsReviewing.length > 0) {
                 results += "**Unprocessed Applicants:**\n";
                 results += unprocessedApplicantsStr;
+                results += stillNeedsReviewing;
             }
         }
     if (hasNewApplicantResults || hasNewBumps || debug) {
@@ -197,7 +207,7 @@ export async function checkForums(message: Message, settings: ISettings): Promis
 
 export function resolveAllApplicants(orig: ICheckForumsResults["applicants"]): ICheckForumsResults["applicants"] {
     for (const [key, value] of Object.entries(orig)) {
-        orig[key].hasBeenReviewed = true;
+        orig[key].manuallyProcessed = true;
     }
     return orig;
 }
@@ -217,6 +227,7 @@ interface IApplicant {
     hasBeenReviewed: boolean;
     url: string;
     username: string;
+    manuallyProcessed: boolean;
 }
 
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
