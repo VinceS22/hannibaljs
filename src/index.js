@@ -148,7 +148,7 @@ exports.generateBumpReport = generateBumpReport;
 function checkForums(message, settings) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
-        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, forumResults, addedBumpsStr, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, stillNeedsReviewing, _e, _f, _g, key, value;
+        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, options, forumResults, addedBumpsStr, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, stillNeedsReviewing, _e, _f, _g, key, value;
         var _this = this;
         return __generator(this, function (_h) {
             switch (_h.label) {
@@ -159,8 +159,14 @@ function checkForums(message, settings) {
                     applicants = {};
                     hasNewBumps = false;
                     hasNewApplicantResults = false;
+                    options = {
+                        headers: {
+                            "User-Agent": settings.userAgent,
+                        },
+                        rejectUnauthorized: false,
+                    };
                     // True if the user has a corresponding accept/reject
-                    return [4 /*yield*/, node_fetch_1.default(settings.baseUrl).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
+                    return [4 /*yield*/, node_fetch_1.default(settings.baseUrl, options).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
                             var data, $, _loop_1;
                             var _a;
                             return __generator(this, function (_b) {
@@ -176,7 +182,7 @@ function checkForums(message, settings) {
                                                 switch (_a.label) {
                                                     case 0:
                                                         url = settings.baseUrl + ",goto," + currentPage;
-                                                        return [4 /*yield*/, node_fetch_1.default(url).then(function (res) { return res.text(); }).then(function (d) {
+                                                        return [4 /*yield*/, node_fetch_1.default(url, options).then(function (res) { return res.text(); }).then(function (d) {
                                                                 $ = cheerio_1.default.load(d);
                                                                 // tslint:disable-next-line:radix
                                                                 $("article.forum-post").map(function (index, element) {
