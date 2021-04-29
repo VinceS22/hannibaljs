@@ -94,7 +94,7 @@ export async function checkForums(message: Message, settings: ISettings): Promis
         headers: {
             "User-Agent": settings.userAgent,
         },
-        rejectUnauthorized: false,
+        insecureHTTPParser: true,
     };
 
     // True if the user has a corresponding accept/reject

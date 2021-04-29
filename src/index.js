@@ -163,7 +163,7 @@ function checkForums(message, settings) {
                         headers: {
                             "User-Agent": settings.userAgent,
                         },
-                        rejectUnauthorized: false,
+                        insecureHTTPParser: true,
                     };
                     // True if the user has a corresponding accept/reject
                     return [4 /*yield*/, node_fetch_1.default(settings.baseUrl, options).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
