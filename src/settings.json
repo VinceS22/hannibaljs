@@ -2,6 +2,7 @@
   "prefix": "!",
   "token": "Your token goes here",
   "baseUrl": "",
+  "userAgent": "",
   "acceptanceString": "you have been accepted",
   "rejectionString": "your application has been rejected"
 }

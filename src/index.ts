@@ -17,6 +17,7 @@ export interface ISettings {
     prefix: string;
     token: string;
     baseUrl: string;
+    userAgent: string;
     acceptanceString: string;
     rejectionString: string;
 }
@@ -89,15 +90,22 @@ export async function checkForums(message: Message, settings: ISettings): Promis
     let applicants: {[poster: string]: IApplicant} = {};
     let hasNewBumps: boolean = false;
     let hasNewApplicantResults: boolean = false;
+    const options = {
+        headers: {
+            "User-Agent": settings.userAgent,
+        },
+        rejectUnauthorized: false,
+    };
+
     // True if the user has a corresponding accept/reject
-    await fetch(settings.baseUrl).then((res: any) => res.text()).then(async (pageNumData: any) => {
+    await fetch(settings.baseUrl, options).then((res: any) => res.text()).then(async (pageNumData: any) => {
         const data = pageNumData;
         let $ = cheerio.load(data);
         lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
         currentPage = lastPage - 1;
         for (currentPage; currentPage <= lastPage; currentPage++) {
             const url = settings.baseUrl + ",goto," + currentPage;
-            await fetch(url).then((res: any) => res.text()).then((d: any) => { // Scope: Page
+            await fetch(url, options).then((res: any) => res.text()).then((d: any) => { // Scope: Page
                   $ = cheerio.load(d);
                   // tslint:disable-next-line:radix
                   $("article.forum-post").map((index: number, element: CheerioElement) => {
