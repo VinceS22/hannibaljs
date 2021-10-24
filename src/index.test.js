@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -70,7 +70,7 @@ settings_json_1.default.rejectionString = "you have been accepted";
 settings_json_1.default.acceptanceString = "your application has been rejected";
 var loadedPages = [];
 for (var i = 1; i < 8; i++) {
-    var d = fs_1.readFileSync("./mocks/" + i + ".html").toString();
+    var d = (0, fs_1.readFileSync)("./mocks/" + i + ".html").toString();
     loadedPages.push(d);
 }
 // jest.mock("fs");
@@ -108,7 +108,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     // Two of the first one because we call once first to get the page number
                     jest_fetch_mock_1.default.once(loadedPages[0]).once(loadedPages[0]).once(loadedPages[1]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.bumpers["dingus prime"]).toBe(2);
@@ -130,7 +130,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     // Two of the first one because we call once first to get the page number
                     jest_fetch_mock_1.default.once(loadedPages[1]).once(loadedPages[1]).once(loadedPages[2]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.bumpers["dingus prime"]).toBe(2);
@@ -152,7 +152,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     // Two of the first one because we call once first to get the page number
                     jest_fetch_mock_1.default.once(loadedPages[2]).once(loadedPages[2]).once(loadedPages[3]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.bumpers["dingus prime"]).toBeUndefined();
@@ -177,7 +177,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     message = new jest_discordjs_mocks_1.MockMessage();
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     jest_fetch_mock_1.default.mockResponse(loadedPages[4]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.applicants.Jabroni).toBeUndefined();
@@ -194,7 +194,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     message = new jest_discordjs_mocks_1.MockMessage();
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     jest_fetch_mock_1.default.mockResponse(loadedPages[5]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.applicants.formatfanatic).toBeDefined();
@@ -211,12 +211,12 @@ describe("Parsing tests for Hannibal bot", function () {
                     message = new jest_discordjs_mocks_1.MockMessage();
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     jest_fetch_mock_1.default.mockResponse(loadedPages[5]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.applicants.formatfanatic).toBeDefined();
                     expect(results.applicants.formatfanatic.hasBeenReviewed).toBe(false);
-                    results.applicants = index_1.resolveAllApplicants(results.applicants);
+                    results.applicants = (0, index_1.resolveAllApplicants)(results.applicants);
                     expect(results.applicants.formatfanatic.manuallyProcessed).toBe(true);
                     return [2 /*return*/];
             }
@@ -230,7 +230,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     message = new jest_discordjs_mocks_1.MockMessage();
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     jest_fetch_mock_1.default.mockResponse(loadedPages[5]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.applicants.gregthegreenguy).toBeDefined();
@@ -247,7 +247,7 @@ describe("Parsing tests for Hannibal bot", function () {
                     message = new jest_discordjs_mocks_1.MockMessage();
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     jest_fetch_mock_1.default.mockResponse(loadedPages[6]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expect(results.applicants.Dredd).toBeDefined();
@@ -265,11 +265,11 @@ describe("Parsing tests for Hannibal bot", function () {
                     message.channel = new jest_discordjs_mocks_1.MockTextChannel();
                     // Two of the first one because we call once first to get the page number
                     jest_fetch_mock_1.default.once(loadedPages[1]).once(loadedPages[1]).once(loadedPages[2]);
-                    return [4 /*yield*/, index_1.checkForums(message, settings_json_1.default)];
+                    return [4 /*yield*/, (0, index_1.checkForums)(message, settings_json_1.default)];
                 case 1:
                     results = _a.sent();
                     expectedReportResults = "Bumpers as of {dateEstablished}: birdup, dingus prime, ladygodiva";
-                    expect(index_1.generateBumpReport(results.bumpers, "{dateEstablished}")).toBe(expectedReportResults);
+                    expect((0, index_1.generateBumpReport)(results.bumpers, "{dateEstablished}")).toBe(expectedReportResults);
                     return [2 /*return*/];
             }
         });

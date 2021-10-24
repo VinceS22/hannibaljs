@@ -38,9 +38,13 @@ export interface IDataFile {
     priorBumpers: {[poster: string]: number};
     dateSinceLastReset: Date;
 }
+const dataJsonContents = fs.readFileSync("data.json")?.toString();
 
-const file: IDataFile | null = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, "../data.json"))?.toString());
+let file: IDataFile | null = null;
+
+if (dataJsonContents) {
+    file = JSON.parse(dataJsonContents);
+}
 
 if (file) {
     priorBumpers = file.priorBumpers;
@@ -233,7 +237,7 @@ export async function checkForums(message: Message, settings: ISettings): Promis
         priorBumpers,
     };
 
-    fs.writeFile("../data.json", JSON.stringify(jsonData), (err) => {
+    fs.writeFile("data.json", JSON.stringify(jsonData), (err) => {
         if (err) {
             // tslint:disable-next-line:no-console
             console.log(err);

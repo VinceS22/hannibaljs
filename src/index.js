@@ -25,7 +25,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -75,7 +75,6 @@ var cheerio_1 = __importDefault(require("cheerio"));
 var Discord = __importStar(require("discord.js"));
 var fs_1 = __importDefault(require("fs"));
 var node_fetch_1 = __importDefault(require("node-fetch"));
-var path_1 = __importDefault(require("path"));
 var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 var results = "";
@@ -83,7 +82,11 @@ var debug = false;
 var priorBumpers = {};
 var priorApplicants = {};
 var dateSinceLastReset = new Date();
-var file = JSON.parse((_a = fs_1.default.readFileSync(path_1.default.resolve(__dirname, "../data.json"))) === null || _a === void 0 ? void 0 : _a.toString());
+var dataJsonContents = (_a = fs_1.default.readFileSync("data.json")) === null || _a === void 0 ? void 0 : _a.toString();
+var file = null;
+if (dataJsonContents) {
+    file = JSON.parse(dataJsonContents);
+}
 if (file) {
     priorBumpers = file.priorBumpers;
     priorApplicants = file.priorApplicants;
@@ -187,7 +190,7 @@ function checkForums(message, settings) {
                         insecureHTTPParser: true,
                     };
                     // True if the user has a corresponding accept/reject
-                    return [4 /*yield*/, node_fetch_1.default(settings.baseUrl, options).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
+                    return [4 /*yield*/, (0, node_fetch_1.default)(settings.baseUrl, options).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
                             var data, $, _loop_1;
                             var _a;
                             return __generator(this, function (_b) {
@@ -200,11 +203,11 @@ function checkForums(message, settings) {
                                         currentPage = lastPage - 1;
                                         _loop_1 = function () {
                                             var url;
-                                            return __generator(this, function (_a) {
-                                                switch (_a.label) {
+                                            return __generator(this, function (_c) {
+                                                switch (_c.label) {
                                                     case 0:
                                                         url = settings.baseUrl + ",goto," + currentPage;
-                                                        return [4 /*yield*/, node_fetch_1.default(url, options).then(function (res) { return res.text(); }).then(function (d) {
+                                                        return [4 /*yield*/, (0, node_fetch_1.default)(url, options).then(function (res) { return res.text(); }).then(function (d) {
                                                                 $ = cheerio_1.default.load(d);
                                                                 // tslint:disable-next-line:radix
                                                                 $("article.forum-post").map(function (index, element) {
@@ -214,7 +217,7 @@ function checkForums(message, settings) {
                                                                     var appUsername = "";
                                                                     var purpose = postPurpose.Bump;
                                                                     postContent.each(function (i, elem) {
-                                                                        var renderedElement = exports.renderElement(elem, settings);
+                                                                        var renderedElement = (0, exports.renderElement)(elem, settings);
                                                                         resultString += renderedElement.postText;
                                                                         if (renderedElement.purpose !== postPurpose.Bump) {
                                                                             purpose = renderedElement.purpose;
@@ -253,7 +256,7 @@ function checkForums(message, settings) {
                                                                 });
                                                             })];
                                                     case 1:
-                                                        _a.sent();
+                                                        _c.sent();
                                                         return [2 /*return*/];
                                                 }
                                             });
@@ -276,8 +279,7 @@ function checkForums(message, settings) {
                 case 1:
                     // True if the user has a corresponding accept/reject
                     _h.sent();
-                    forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults,
-                        hasNewBumps: hasNewBumps, lastPage: lastPage };
+                    forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults, hasNewBumps: hasNewBumps, lastPage: lastPage };
                     results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
                     addedBumpsStr = false;
                     for (_i = 0, _c = Object.entries(bumpers); _i < _c.length; _i++) {
@@ -336,14 +338,14 @@ function checkForums(message, settings) {
                     _h.sent();
                     _h.label = 5;
                 case 5:
-                    priorBumpers = exports.deepCopy(bumpers);
-                    priorApplicants = exports.deepCopy(applicants);
+                    priorBumpers = (0, exports.deepCopy)(bumpers);
+                    priorApplicants = (0, exports.deepCopy)(applicants);
                     jsonData = {
                         dateSinceLastReset: dateSinceLastReset,
                         priorApplicants: priorApplicants,
                         priorBumpers: priorBumpers,
                     };
-                    fs_1.default.writeFile("../data.json", JSON.stringify(jsonData), function (err) {
+                    fs_1.default.writeFile("data.json", JSON.stringify(jsonData), function (err) {
                         if (err) {
                             // tslint:disable-next-line:no-console
                             console.log(err);
@@ -374,7 +376,7 @@ var postPurpose;
     postPurpose["Rejection"] = "Rejection";
 })(postPurpose || (postPurpose = {}));
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
-exports.renderElement = function (elem, settings) {
+var renderElement = function (elem, settings) {
     var _a, _b, _c;
     var postText = "";
     var purpose = postPurpose.Bump;
@@ -415,7 +417,7 @@ exports.renderElement = function (elem, settings) {
     else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
         var spanContents = "";
         spanContents = elem.children.map(function (nestedElement) {
-            var elementContent = exports.renderElement(nestedElement, settings);
+            var elementContent = (0, exports.renderElement)(nestedElement, settings);
             // Yank the username from the quoted text and set it if we have it.
             if (elementContent.appUsername) {
                 appUsername = elementContent.appUsername;
@@ -426,7 +428,7 @@ exports.renderElement = function (elem, settings) {
     }
     else if (elem.type === "tag" && elem.name === "div") { // A div with more elements in it
         elem.children.forEach(function (nestedElement) {
-            var element = exports.renderElement(nestedElement, settings);
+            var element = (0, exports.renderElement)(nestedElement, settings);
             postText += element.postText;
             if (element.purpose === postPurpose.Acceptance || element.purpose === postPurpose.Rejection) {
                 purpose = element.purpose;
@@ -435,6 +437,7 @@ exports.renderElement = function (elem, settings) {
     }
     return { appUsername: appUsername, purpose: purpose, postText: postText };
 };
+exports.renderElement = renderElement;
 /**
  * Deep copy function for TypeScript.
  * @param T Generic type of target/copied value.
@@ -442,7 +445,7 @@ exports.renderElement = function (elem, settings) {
  * @see Source project, ts-deepcopy https://github.com/ykdr2017/ts-deepcopy
  * @see Code pen https://codepen.io/erikvullings/pen/ejyBYg
  */
-exports.deepCopy = function (target) {
+var deepCopy = function (target) {
     if (target === null) {
         return target;
     }
@@ -452,15 +455,16 @@ exports.deepCopy = function (target) {
     if (target instanceof Array) {
         var cp_1 = [];
         target.forEach(function (v) { cp_1.push(v); });
-        return cp_1.map(function (n) { return exports.deepCopy(n); });
+        return cp_1.map(function (n) { return (0, exports.deepCopy)(n); });
     }
     if (typeof target === "object" && target !== {}) {
         var cp_2 = __assign({}, target);
         Object.keys(cp_2).forEach(function (k) {
-            cp_2[k] = exports.deepCopy(cp_2[k]);
+            cp_2[k] = (0, exports.deepCopy)(cp_2[k]);
         });
         return cp_2;
     }
     return target;
 };
+exports.deepCopy = deepCopy;
 //# sourceMappingURL=index.js.map
