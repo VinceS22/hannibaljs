@@ -25,7 +25,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -68,10 +68,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deepCopy = exports.renderElement = exports.resolveAllApplicants = exports.checkForums = exports.generateBumpReport = void 0;
 var cheerio_1 = __importDefault(require("cheerio"));
 var Discord = __importStar(require("discord.js"));
+var fs_1 = __importDefault(require("fs"));
 var node_fetch_1 = __importDefault(require("node-fetch"));
 var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
@@ -80,6 +82,16 @@ var debug = false;
 var priorBumpers = {};
 var priorApplicants = {};
 var dateSinceLastReset = new Date();
+var dataJsonContents = (_a = fs_1.default.readFileSync("data.json")) === null || _a === void 0 ? void 0 : _a.toString();
+var file = null;
+if (dataJsonContents) {
+    file = JSON.parse(dataJsonContents);
+}
+if (file) {
+    priorBumpers = file.priorBumpers;
+    priorApplicants = file.priorApplicants;
+    dateSinceLastReset = dateSinceLastReset;
+}
 client.once("ready", function () {
     var helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
         "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bump report date as well" +
@@ -95,29 +107,41 @@ client.once("ready", function () {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!(message.content === "!forums")) return [3 /*break*/, 2];
-                    message.channel.send("Checking forums now.");
-                    return [4 /*yield*/, checkForums(message, settings_json_1.default)];
+                    if (!(message.content === "!forums")) return [3 /*break*/, 3];
+                    return [4 /*yield*/, message.channel.send("Checking forums now.")];
                 case 1:
                     _a.sent();
-                    return [3 /*break*/, 3];
+                    return [4 /*yield*/, checkForums(message, settings_json_1.default)];
                 case 2:
-                    if (message.content === "!reset") {
-                        message.channel.send("Resetting data");
-                        reset();
-                    }
-                    else if (message.content === "!process") {
-                        priorApplicants = resolveAllApplicants(priorApplicants);
-                        message.channel.send("All applicants are processed");
-                    }
-                    else if (message.content === "!bump") {
-                        message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()));
-                    }
-                    else if (message.content === "!help") {
-                        message.channel.send(helpMessage);
-                    }
-                    _a.label = 3;
-                case 3: return [2 /*return*/];
+                    _a.sent();
+                    return [3 /*break*/, 11];
+                case 3:
+                    if (!(message.content === "!reset")) return [3 /*break*/, 5];
+                    return [4 /*yield*/, message.channel.send("Resetting data")];
+                case 4:
+                    _a.sent();
+                    reset();
+                    return [3 /*break*/, 11];
+                case 5:
+                    if (!(message.content === "!process")) return [3 /*break*/, 7];
+                    priorApplicants = resolveAllApplicants(priorApplicants);
+                    return [4 /*yield*/, message.channel.send("All applicants are processed")];
+                case 6:
+                    _a.sent();
+                    return [3 /*break*/, 11];
+                case 7:
+                    if (!(message.content === "!bump")) return [3 /*break*/, 9];
+                    return [4 /*yield*/, message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()))];
+                case 8:
+                    _a.sent();
+                    return [3 /*break*/, 11];
+                case 9:
+                    if (!(message.content === "!help")) return [3 /*break*/, 11];
+                    return [4 /*yield*/, message.channel.send(helpMessage)];
+                case 10:
+                    _a.sent();
+                    _a.label = 11;
+                case 11: return [2 /*return*/];
             }
         });
     }); });
@@ -148,7 +172,7 @@ exports.generateBumpReport = generateBumpReport;
 function checkForums(message, settings) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
-        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, options, forumResults, addedBumpsStr, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, stillNeedsReviewing, _e, _f, _g, key, value;
+        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, options, forumResults, addedBumpsStr, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, stillNeedsReviewing, _e, _f, _g, key, value, jsonData;
         var _this = this;
         return __generator(this, function (_h) {
             switch (_h.label) {
@@ -166,7 +190,7 @@ function checkForums(message, settings) {
                         insecureHTTPParser: true,
                     };
                     // True if the user has a corresponding accept/reject
-                    return [4 /*yield*/, node_fetch_1.default(settings.baseUrl, options).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
+                    return [4 /*yield*/, (0, node_fetch_1.default)(settings.baseUrl, options).then(function (res) { return res.text(); }).then(function (pageNumData) { return __awaiter(_this, void 0, void 0, function () {
                             var data, $, _loop_1;
                             var _a;
                             return __generator(this, function (_b) {
@@ -174,15 +198,16 @@ function checkForums(message, settings) {
                                     case 0:
                                         data = pageNumData;
                                         $ = cheerio_1.default.load(data);
+                                        // tslint:disable-next-line:radix
                                         lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
                                         currentPage = lastPage - 1;
                                         _loop_1 = function () {
                                             var url;
-                                            return __generator(this, function (_a) {
-                                                switch (_a.label) {
+                                            return __generator(this, function (_c) {
+                                                switch (_c.label) {
                                                     case 0:
                                                         url = settings.baseUrl + ",goto," + currentPage;
-                                                        return [4 /*yield*/, node_fetch_1.default(url, options).then(function (res) { return res.text(); }).then(function (d) {
+                                                        return [4 /*yield*/, (0, node_fetch_1.default)(url, options).then(function (res) { return res.text(); }).then(function (d) {
                                                                 $ = cheerio_1.default.load(d);
                                                                 // tslint:disable-next-line:radix
                                                                 $("article.forum-post").map(function (index, element) {
@@ -192,7 +217,7 @@ function checkForums(message, settings) {
                                                                     var appUsername = "";
                                                                     var purpose = postPurpose.Bump;
                                                                     postContent.each(function (i, elem) {
-                                                                        var renderedElement = exports.renderElement(elem, settings);
+                                                                        var renderedElement = (0, exports.renderElement)(elem, settings);
                                                                         resultString += renderedElement.postText;
                                                                         if (renderedElement.purpose !== postPurpose.Bump) {
                                                                             purpose = renderedElement.purpose;
@@ -231,7 +256,7 @@ function checkForums(message, settings) {
                                                                 });
                                                             })];
                                                     case 1:
-                                                        _a.sent();
+                                                        _c.sent();
                                                         return [2 /*return*/];
                                                 }
                                             });
@@ -254,8 +279,7 @@ function checkForums(message, settings) {
                 case 1:
                     // True if the user has a corresponding accept/reject
                     _h.sent();
-                    forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults,
-                        hasNewBumps: hasNewBumps, lastPage: lastPage };
+                    forumResults = { applicants: applicants, bumpers: bumpers, currentPage: currentPage, hasNewApplicantResults: hasNewApplicantResults, hasNewBumps: hasNewBumps, lastPage: lastPage };
                     results += "Results for pages " + (lastPage - 1) + " and " + lastPage + "\n";
                     addedBumpsStr = false;
                     for (_i = 0, _c = Object.entries(bumpers); _i < _c.length; _i++) {
@@ -304,14 +328,29 @@ function checkForums(message, settings) {
                             results += stillNeedsReviewing;
                         }
                     }
-                    if (hasNewApplicantResults || hasNewBumps || debug) {
-                        message.channel.send(results);
-                    }
-                    else {
-                        message.channel.send("Nothing new!");
-                    }
-                    priorBumpers = exports.deepCopy(bumpers);
-                    priorApplicants = exports.deepCopy(applicants);
+                    if (!(hasNewApplicantResults || hasNewBumps || debug)) return [3 /*break*/, 3];
+                    return [4 /*yield*/, message.channel.send(results)];
+                case 2:
+                    _h.sent();
+                    return [3 /*break*/, 5];
+                case 3: return [4 /*yield*/, message.channel.send("Nothing new!")];
+                case 4:
+                    _h.sent();
+                    _h.label = 5;
+                case 5:
+                    priorBumpers = (0, exports.deepCopy)(bumpers);
+                    priorApplicants = (0, exports.deepCopy)(applicants);
+                    jsonData = {
+                        dateSinceLastReset: dateSinceLastReset,
+                        priorApplicants: priorApplicants,
+                        priorBumpers: priorBumpers,
+                    };
+                    fs_1.default.writeFile("data.json", JSON.stringify(jsonData), function (err) {
+                        if (err) {
+                            // tslint:disable-next-line:no-console
+                            console.log(err);
+                        }
+                    });
                     bumpers = {};
                     applicants = {};
                     results = "";
@@ -337,7 +376,7 @@ var postPurpose;
     postPurpose["Rejection"] = "Rejection";
 })(postPurpose || (postPurpose = {}));
 // Takes a line in a post, determines what it is, then sends a string back depending on what it is.
-exports.renderElement = function (elem, settings) {
+var renderElement = function (elem, settings) {
     var _a, _b, _c;
     var postText = "";
     var purpose = postPurpose.Bump;
@@ -378,7 +417,7 @@ exports.renderElement = function (elem, settings) {
     else if (elem.type === "tag" && elem.name === "span") { // This is a quoted post
         var spanContents = "";
         spanContents = elem.children.map(function (nestedElement) {
-            var elementContent = exports.renderElement(nestedElement, settings);
+            var elementContent = (0, exports.renderElement)(nestedElement, settings);
             // Yank the username from the quoted text and set it if we have it.
             if (elementContent.appUsername) {
                 appUsername = elementContent.appUsername;
@@ -389,7 +428,7 @@ exports.renderElement = function (elem, settings) {
     }
     else if (elem.type === "tag" && elem.name === "div") { // A div with more elements in it
         elem.children.forEach(function (nestedElement) {
-            var element = exports.renderElement(nestedElement, settings);
+            var element = (0, exports.renderElement)(nestedElement, settings);
             postText += element.postText;
             if (element.purpose === postPurpose.Acceptance || element.purpose === postPurpose.Rejection) {
                 purpose = element.purpose;
@@ -398,6 +437,7 @@ exports.renderElement = function (elem, settings) {
     }
     return { appUsername: appUsername, purpose: purpose, postText: postText };
 };
+exports.renderElement = renderElement;
 /**
  * Deep copy function for TypeScript.
  * @param T Generic type of target/copied value.
@@ -405,7 +445,7 @@ exports.renderElement = function (elem, settings) {
  * @see Source project, ts-deepcopy https://github.com/ykdr2017/ts-deepcopy
  * @see Code pen https://codepen.io/erikvullings/pen/ejyBYg
  */
-exports.deepCopy = function (target) {
+var deepCopy = function (target) {
     if (target === null) {
         return target;
     }
@@ -415,15 +455,16 @@ exports.deepCopy = function (target) {
     if (target instanceof Array) {
         var cp_1 = [];
         target.forEach(function (v) { cp_1.push(v); });
-        return cp_1.map(function (n) { return exports.deepCopy(n); });
+        return cp_1.map(function (n) { return (0, exports.deepCopy)(n); });
     }
     if (typeof target === "object" && target !== {}) {
         var cp_2 = __assign({}, target);
         Object.keys(cp_2).forEach(function (k) {
-            cp_2[k] = exports.deepCopy(cp_2[k]);
+            cp_2[k] = (0, exports.deepCopy)(cp_2[k]);
         });
         return cp_2;
     }
     return target;
 };
+exports.deepCopy = deepCopy;
 //# sourceMappingURL=index.js.map
