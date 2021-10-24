@@ -1,4 +1,23 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -39,12 +58,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-jest.unmock("fs");
 jest.mock("discord.js");
 var fs_1 = require("fs");
 var jest_discordjs_mocks_1 = require("jest-discordjs-mocks");
 var jest_fetch_mock_1 = __importDefault(require("jest-fetch-mock"));
 jest.unmock("./index");
+var fs = __importStar(require("fs"));
 var index_1 = require("./index");
 var settings_json_1 = __importDefault(require("./settings.json"));
 settings_json_1.default.rejectionString = "you have been accepted";
@@ -54,7 +73,32 @@ for (var i = 1; i < 8; i++) {
     var d = fs_1.readFileSync("./mocks/" + i + ".html").toString();
     loadedPages.push(d);
 }
+// jest.mock("fs");
+// const mockFS: jest.Mocked<typeof fs> = fs as jest.Mocked<typeof fs>;
 describe("Parsing tests for Hannibal bot", function () {
+    // beforeAll(() => {
+    //   // clear any previous calls
+    //   mockFS.writeFileSync.mockClear();
+    //
+    //   // since you're using fs.readFileSync
+    //   // set some retun data to be used in your implementation
+    //   mockFS.readFileSync.mockReturnValue("");
+    // });
+    //
+    // it("should match snapshot of calls", () => {
+    //   expect(mockFS.writeFileSync.mock.calls).toMatchSnapshot();
+    // });
+    //
+    // it("should have called 3 times", () => {
+    //   expect(mockFS.writeFileSync).toHaveBeenCalledTimes(3);
+    // });
+    //
+    // it("should have called with...", () => {
+    //   expect(mockFS.writeFileSync).toHaveBeenCalledWith(
+    //     "/root/test/path/tslint.json",
+    //     "X", // <- this is the mock return value from above
+    //   );
+    // });
     test("General purpose parsing", function () { return __awaiter(void 0, void 0, void 0, function () {
         var message, results;
         return __generator(this, function (_a) {
@@ -228,6 +272,12 @@ describe("Parsing tests for Hannibal bot", function () {
                     expect(index_1.generateBumpReport(results.bumpers, "{dateEstablished}")).toBe(expectedReportResults);
                     return [2 /*return*/];
             }
+        });
+    }); });
+    test("When hannibal starts, a file will exist containing prior results or it will be created", function () { return __awaiter(void 0, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            jest.spyOn(fs, "mkdirSync");
+            return [2 /*return*/];
         });
     }); });
 });

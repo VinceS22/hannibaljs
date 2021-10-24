@@ -1,12 +1,11 @@
-import {enableFetchMocks, MockParams, MockResponseInitFunction} from "jest-fetch-mock";
-jest.unmock("fs");
+
 jest.mock("discord.js");
 import {readFileSync} from "fs";
 import {MockMessage, MockTextChannel} from "jest-discordjs-mocks";
 import fetch from "jest-fetch-mock";
-import { mocked } from "ts-jest/utils";
-import * as ind from "./index";
+
 jest.unmock("./index");
+import * as fs from "fs";
 import {checkForums, generateBumpReport, resolveAllApplicants} from "./index";
 import settings from "./settings.json";
 settings.rejectionString = "you have been accepted";
@@ -16,11 +15,34 @@ for (let i = 1; i < 8; i++) {
   const d = readFileSync("./mocks/" + i + ".html").toString();
   loadedPages.push(d);
 }
+// jest.mock("fs");
 
-
+// const mockFS: jest.Mocked<typeof fs> = fs as jest.Mocked<typeof fs>;
 
 describe("Parsing tests for Hannibal bot", () => {
-
+  // beforeAll(() => {
+  //   // clear any previous calls
+  //   mockFS.writeFileSync.mockClear();
+  //
+  //   // since you're using fs.readFileSync
+  //   // set some retun data to be used in your implementation
+  //   mockFS.readFileSync.mockReturnValue("");
+  // });
+  //
+  // it("should match snapshot of calls", () => {
+  //   expect(mockFS.writeFileSync.mock.calls).toMatchSnapshot();
+  // });
+  //
+  // it("should have called 3 times", () => {
+  //   expect(mockFS.writeFileSync).toHaveBeenCalledTimes(3);
+  // });
+  //
+  // it("should have called with...", () => {
+  //   expect(mockFS.writeFileSync).toHaveBeenCalledWith(
+  //     "/root/test/path/tslint.json",
+  //     "X", // <- this is the mock return value from above
+  //   );
+  // });
   test("General purpose parsing", async () => {
     const message = new MockMessage();
     message.channel = new MockTextChannel();
@@ -111,7 +133,6 @@ describe("Parsing tests for Hannibal bot", () => {
     expect(results.applicants.Dredd.hasBeenReviewed).toBe(true);
   });
 
-
   test("Should properly generate a bump report", async () => {
     const message = new MockMessage();
     message.channel = new MockTextChannel();
@@ -122,6 +143,8 @@ describe("Parsing tests for Hannibal bot", () => {
     expect(generateBumpReport(results.bumpers, "{dateEstablished}")).toBe(expectedReportResults);
   });
 
-
+  test("When hannibal starts, a file will exist containing prior results or it will be created", async () => {
+    jest.spyOn(fs, "mkdirSync");
+  });
 
 });

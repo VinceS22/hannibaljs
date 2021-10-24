@@ -1,7 +1,9 @@
 import cheerio from "cheerio";
 import * as Discord from "discord.js";
 import {Message} from "discord.js";
+import fs from "fs";
 import fetch from "node-fetch";
+import path from "path";
 import userSettings from "./settings.json";
 
 const client = new Discord.Client();
@@ -30,6 +32,22 @@ export interface ICheckForumsResults {
     hasNewBumps: boolean;
     hasNewApplicantResults: boolean;
 }
+
+export interface IDataFile {
+    priorApplicants: {[poster: string]: IApplicant};
+    priorBumpers: {[poster: string]: number};
+    dateSinceLastReset: Date;
+}
+
+const file: IDataFile | null = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "../data.json"))?.toString());
+
+if (file) {
+    priorBumpers = file.priorBumpers;
+    priorApplicants = file.priorApplicants;
+    dateSinceLastReset = dateSinceLastReset;
+}
+
 client.once("ready", () => {
     const helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
       "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bump report date as well" +
@@ -44,18 +62,18 @@ client.once("ready", () => {
 
     client.on("message", async (message) => {
         if (message.content === "!forums") {
-            message.channel.send("Checking forums now.");
+            await message.channel.send("Checking forums now.");
             await checkForums(message, userSettings);
         } else if (message.content === "!reset") {
-            message.channel.send("Resetting data");
+            await message.channel.send("Resetting data");
             reset();
         } else if (message.content === "!process") {
             priorApplicants = resolveAllApplicants(priorApplicants);
-            message.channel.send("All applicants are processed");
+            await message.channel.send("All applicants are processed");
         } else if (message.content === "!bump") {
-            message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()));
+            await message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()));
         } else if (message.content === "!help") {
-            message.channel.send(helpMessage);
+            await message.channel.send(helpMessage);
         }
     });
 });
@@ -101,6 +119,7 @@ export async function checkForums(message: Message, settings: ISettings): Promis
     await fetch(settings.baseUrl, options).then((res: any) => res.text()).then(async (pageNumData: any) => {
         const data = pageNumData;
         let $ = cheerio.load(data);
+        // tslint:disable-next-line:radix
         lastPage = parseInt($("input[title='Page Number']").prop("max") ?? -1);
         currentPage = lastPage - 1;
         for (currentPage; currentPage <= lastPage; currentPage++) {
@@ -201,12 +220,25 @@ export async function checkForums(message: Message, settings: ISettings): Promis
             }
         }
     if (hasNewApplicantResults || hasNewBumps || debug) {
-            message.channel.send(results);
+            await message.channel.send(results);
         } else {
-            message.channel.send("Nothing new!");
+            await message.channel.send("Nothing new!");
         }
     priorBumpers = deepCopy(bumpers);
     priorApplicants = deepCopy(applicants);
+
+    const jsonData: IDataFile = {
+        dateSinceLastReset,
+        priorApplicants,
+        priorBumpers,
+    };
+
+    fs.writeFile("../data.json", JSON.stringify(jsonData), (err) => {
+        if (err) {
+            // tslint:disable-next-line:no-console
+            console.log(err);
+        }
+    });
     bumpers = {};
     applicants = {};
     results = "";

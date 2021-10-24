@@ -68,11 +68,14 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deepCopy = exports.renderElement = exports.resolveAllApplicants = exports.checkForums = exports.generateBumpReport = void 0;
 var cheerio_1 = __importDefault(require("cheerio"));
 var Discord = __importStar(require("discord.js"));
+var fs_1 = __importDefault(require("fs"));
 var node_fetch_1 = __importDefault(require("node-fetch"));
+var path_1 = __importDefault(require("path"));
 var settings_json_1 = __importDefault(require("./settings.json"));
 var client = new Discord.Client();
 var results = "";
@@ -80,6 +83,12 @@ var debug = false;
 var priorBumpers = {};
 var priorApplicants = {};
 var dateSinceLastReset = new Date();
+var file = JSON.parse((_a = fs_1.default.readFileSync(path_1.default.resolve(__dirname, "../data.json"))) === null || _a === void 0 ? void 0 : _a.toString());
+if (file) {
+    priorBumpers = file.priorBumpers;
+    priorApplicants = file.priorApplicants;
+    dateSinceLastReset = dateSinceLastReset;
+}
 client.once("ready", function () {
     var helpMessage = "Available commands: \n!forums : Returns the summary of Vox's last two forum pages" +
         "\n!reset : Resets all data about prior people who applied and bumped. This will reset the !bump report date as well" +
@@ -95,29 +104,41 @@ client.once("ready", function () {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!(message.content === "!forums")) return [3 /*break*/, 2];
-                    message.channel.send("Checking forums now.");
-                    return [4 /*yield*/, checkForums(message, settings_json_1.default)];
+                    if (!(message.content === "!forums")) return [3 /*break*/, 3];
+                    return [4 /*yield*/, message.channel.send("Checking forums now.")];
                 case 1:
                     _a.sent();
-                    return [3 /*break*/, 3];
+                    return [4 /*yield*/, checkForums(message, settings_json_1.default)];
                 case 2:
-                    if (message.content === "!reset") {
-                        message.channel.send("Resetting data");
-                        reset();
-                    }
-                    else if (message.content === "!process") {
-                        priorApplicants = resolveAllApplicants(priorApplicants);
-                        message.channel.send("All applicants are processed");
-                    }
-                    else if (message.content === "!bump") {
-                        message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()));
-                    }
-                    else if (message.content === "!help") {
-                        message.channel.send(helpMessage);
-                    }
-                    _a.label = 3;
-                case 3: return [2 /*return*/];
+                    _a.sent();
+                    return [3 /*break*/, 11];
+                case 3:
+                    if (!(message.content === "!reset")) return [3 /*break*/, 5];
+                    return [4 /*yield*/, message.channel.send("Resetting data")];
+                case 4:
+                    _a.sent();
+                    reset();
+                    return [3 /*break*/, 11];
+                case 5:
+                    if (!(message.content === "!process")) return [3 /*break*/, 7];
+                    priorApplicants = resolveAllApplicants(priorApplicants);
+                    return [4 /*yield*/, message.channel.send("All applicants are processed")];
+                case 6:
+                    _a.sent();
+                    return [3 /*break*/, 11];
+                case 7:
+                    if (!(message.content === "!bump")) return [3 /*break*/, 9];
+                    return [4 /*yield*/, message.channel.send(generateBumpReport(priorBumpers, dateSinceLastReset.toDateString()))];
+                case 8:
+                    _a.sent();
+                    return [3 /*break*/, 11];
+                case 9:
+                    if (!(message.content === "!help")) return [3 /*break*/, 11];
+                    return [4 /*yield*/, message.channel.send(helpMessage)];
+                case 10:
+                    _a.sent();
+                    _a.label = 11;
+                case 11: return [2 /*return*/];
             }
         });
     }); });
@@ -148,7 +169,7 @@ exports.generateBumpReport = generateBumpReport;
 function checkForums(message, settings) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
-        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, options, forumResults, addedBumpsStr, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, stillNeedsReviewing, _e, _f, _g, key, value;
+        var currentPage, lastPage, bumpers, applicants, hasNewBumps, hasNewApplicantResults, options, forumResults, addedBumpsStr, _i, _c, _d, key, value, processedApplicantsStr, unprocessedApplicantsStr, stillNeedsReviewing, _e, _f, _g, key, value, jsonData;
         var _this = this;
         return __generator(this, function (_h) {
             switch (_h.label) {
@@ -174,6 +195,7 @@ function checkForums(message, settings) {
                                     case 0:
                                         data = pageNumData;
                                         $ = cheerio_1.default.load(data);
+                                        // tslint:disable-next-line:radix
                                         lastPage = parseInt((_a = $("input[title='Page Number']").prop("max")) !== null && _a !== void 0 ? _a : -1);
                                         currentPage = lastPage - 1;
                                         _loop_1 = function () {
@@ -304,14 +326,29 @@ function checkForums(message, settings) {
                             results += stillNeedsReviewing;
                         }
                     }
-                    if (hasNewApplicantResults || hasNewBumps || debug) {
-                        message.channel.send(results);
-                    }
-                    else {
-                        message.channel.send("Nothing new!");
-                    }
+                    if (!(hasNewApplicantResults || hasNewBumps || debug)) return [3 /*break*/, 3];
+                    return [4 /*yield*/, message.channel.send(results)];
+                case 2:
+                    _h.sent();
+                    return [3 /*break*/, 5];
+                case 3: return [4 /*yield*/, message.channel.send("Nothing new!")];
+                case 4:
+                    _h.sent();
+                    _h.label = 5;
+                case 5:
                     priorBumpers = exports.deepCopy(bumpers);
                     priorApplicants = exports.deepCopy(applicants);
+                    jsonData = {
+                        dateSinceLastReset: dateSinceLastReset,
+                        priorApplicants: priorApplicants,
+                        priorBumpers: priorBumpers,
+                    };
+                    fs_1.default.writeFile("../data.json", JSON.stringify(jsonData), function (err) {
+                        if (err) {
+                            // tslint:disable-next-line:no-console
+                            console.log(err);
+                        }
+                    });
                     bumpers = {};
                     applicants = {};
                     results = "";
