@@ -118,3 +118,4 @@ dist
 .pnp.*
 src/settings.json
 src/settings.json
+data.json
