@@ -211,7 +211,7 @@ function checkForums(message, settings) {
                                                                 $ = cheerio_1.default.load(d);
                                                                 // tslint:disable-next-line:radix
                                                                 $("article.forum-post").map(function (index, element) {
-                                                                    var userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
+                                                                    var userName = $("h3", element).data("displayname").toString().replace(/%A0/g, " ");
                                                                     var postContent = $(".forum-post__body", element).eq(0).contents();
                                                                     var resultString = "";
                                                                     var appUsername = "";

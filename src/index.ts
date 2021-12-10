@@ -132,7 +132,7 @@ export async function checkForums(message: Message, settings: ISettings): Promis
                   $ = cheerio.load(d);
                   // tslint:disable-next-line:radix
                   $("article.forum-post").map((index: number, element: CheerioElement) => {
-                      const userName = $("h3", element).data("displayname").replace(/%A0/g, " ");
+                      const userName = $("h3", element).data("displayname").toString().replace(/%A0/g, " ");
                       const postContent = $(".forum-post__body", element).eq(0).contents();
                       let resultString = "";
                       let appUsername = "";
